@@ -7,7 +7,9 @@ import {
   TextInput,
   Pressable,
   Modal,
+  Alert,
 } from "react-native";
+import { useTheme } from "../../App";
 
 const GameDetailScreen = ({
   route,
@@ -17,6 +19,7 @@ const GameDetailScreen = ({
   editEntry,
   deleteEntry,
 }) => {
+  const { theme, getTextSize } = useTheme();
   // Get the game data passed from HomeScreen
   const { gameId } = route.params;
   const game = getGame(gameId);
@@ -31,8 +34,8 @@ const GameDetailScreen = ({
   const [showAddEntry, setShowAddEntry] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [editEntryText, setEditEntryText] = useState("");
-  const [longPressTimer, setLongPressTimer] = useState(null);
-  const [isLongPressing, setIsLongPressing] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState(null);
 
   // Helper function to get today's date in local timezone
   const getTodaysDate = () => {
@@ -73,24 +76,25 @@ const GameDetailScreen = ({
     setEditEntryText("");
   };
 
-  // Function to handle long press start
-  const handleLongPressStart = (entry) => {
-    setIsLongPressing(entry.id);
-    const timer = setTimeout(() => {
-      // Delete after 3 seconds
-      deleteEntry(gameId, entry.id);
-      setIsLongPressing(null);
-    }, 3000);
-    setLongPressTimer(timer);
+  // Function to show delete confirmation
+  const handleDeleteEntry = (entry) => {
+    setEntryToDelete(entry);
+    setShowDeleteConfirm(true);
   };
 
-  // Function to handle long press end (user lifted finger)
-  const handleLongPressEnd = () => {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      setLongPressTimer(null);
+  // Function to confirm delete
+  const confirmDelete = () => {
+    if (entryToDelete) {
+      deleteEntry(gameId, entryToDelete.id);
+      setShowDeleteConfirm(false);
+      setEntryToDelete(null);
     }
-    setIsLongPressing(null);
+  };
+
+  // Function to cancel delete
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setEntryToDelete(null);
   };
 
   // Function to format date nicely
@@ -107,6 +111,8 @@ const GameDetailScreen = ({
     });
   };
 
+  const styles = getStyles(theme, getTextSize);
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -118,71 +124,85 @@ const GameDetailScreen = ({
           >
             <Text style={styles.backButtonText}>← Back</Text>
           </Pressable>
-          <Pressable style={styles.settingsButton}>
-            <Text style={styles.settingsButtonText}>Settings</Text>
+          <Pressable
+            style={styles.settingsButton}
+            onPress={() => navigation.navigate("Settings")}
+          >
+            <Text style={styles.settingsButtonText}>⚙️ Settings</Text>
           </Pressable>
         </View>
 
         <View style={styles.gameHeader}>
           <View style={styles.gameImage}>
-            <Text style={styles.imagePlaceholder}>🎮</Text>
+            <Text style={styles.imagePlaceholder}>
+              {game.image ? game.image.emoji : "🎮"}
+            </Text>
           </View>
           <Text style={styles.gameTitle}>{game.title}</Text>
+          {game.image && game.image.id !== "default" && (
+            <Text style={styles.gameCategory}>{game.image.name}</Text>
+          )}
           <Pressable
-            style={styles.addImgButton}
+            style={styles.addEntryButton}
             onPress={() => setShowAddEntry(true)}
           >
-            <Text style={styles.addImgButtonText}>Add Entry</Text>
+            <Text style={styles.addEntryButtonText}>+ Add Entry</Text>
           </Pressable>
         </View>
       </View>
 
       {/* Entries List */}
-      <ScrollView style={styles.entriesList}>
-        {game.entries.map((entry) => (
-          <View
-            key={entry.id}
-            style={[
-              styles.entryCard,
-              isLongPressing === entry.id && styles.entryCardDeleting,
-            ]}
-          >
-            <View style={styles.entryHeader}>
-              <Text style={styles.entryDate}>
-                Entry from {formatDate(entry.date)}
-              </Text>
-              <View style={styles.entryActions}>
-                <Pressable
-                  style={styles.editButton}
-                  onPress={() => handleEditEntry(entry)}
-                >
-                  <Text style={styles.editButtonText}>✏️</Text>
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.deleteEntryButton,
-                    isLongPressing === entry.id &&
-                      styles.deleteEntryButtonPressed,
-                  ]}
-                  onPressIn={() => handleLongPressStart(entry)}
-                  onPressOut={handleLongPressEnd}
-                  onLongPress={() => {}} // Required for onPressIn/Out to work properly
-                >
-                  <Text style={styles.deleteEntryButtonText}>
-                    {isLongPressing === entry.id ? "⏱️" : "🗑️"}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-            <View style={styles.entryContent}>
-              <Text style={styles.entryText}>{entry.text}</Text>
-              {/* Placeholder for images */}
-              <View style={styles.entryImage}>
-                <Text style={styles.entryImagePlaceholder}>📷</Text>
-              </View>
-            </View>
+      <ScrollView
+        style={styles.entriesList}
+        showsVerticalScrollIndicator={false}
+      >
+        {game.entries.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateIcon}>📝</Text>
+            <Text style={styles.emptyStateTitle}>No entries yet</Text>
+            <Text style={styles.emptyStateMessage}>
+              Start documenting your gaming journey!
+            </Text>
+            <Pressable
+              style={styles.emptyStateButton}
+              onPress={() => setShowAddEntry(true)}
+            >
+              <Text style={styles.emptyStateButtonText}>Add First Entry</Text>
+            </Pressable>
           </View>
-        ))}
+        ) : (
+          game.entries.map((entry) => (
+            <View key={entry.id} style={styles.entryCard}>
+              <View style={styles.entryHeader}>
+                <Text style={styles.entryDate}>{formatDate(entry.date)}</Text>
+                <View style={styles.entryActions}>
+                  <Pressable
+                    style={styles.editButton}
+                    onPress={() => handleEditEntry(entry)}
+                  >
+                    <Text style={styles.editButtonIcon}>✏️</Text>
+                    <Text style={styles.editButtonText}>Edit</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.deleteButton}
+                    onPress={() => handleDeleteEntry(entry)}
+                  >
+                    <Text style={styles.deleteButtonIcon}>🗑️</Text>
+                    <Text style={styles.deleteButtonText}>Delete</Text>
+                  </Pressable>
+                </View>
+              </View>
+              <View style={styles.entryContent}>
+                <Text style={styles.entryText}>{entry.text}</Text>
+                {/* Placeholder for images */}
+                <View style={styles.entryImagePlaceholder}>
+                  <Text style={styles.entryImageIcon}>📷</Text>
+                  <Text style={styles.entryImageText}>Photo</Text>
+                </View>
+              </View>
+            </View>
+          ))
+        )}
       </ScrollView>
 
       {/* Add Entry Modal */}
@@ -202,11 +222,13 @@ const GameDetailScreen = ({
             <TextInput
               style={styles.textInput}
               placeholder="Write your game notes here..."
+              placeholderTextColor={theme.placeholderText}
               multiline={true}
               numberOfLines={6}
               value={newEntryText}
               onChangeText={setNewEntryText}
               textAlignVertical="top"
+              autoFocus={true}
             />
 
             <View style={styles.modalButtons}>
@@ -251,11 +273,13 @@ const GameDetailScreen = ({
             <TextInput
               style={styles.textInput}
               placeholder="Edit your game notes..."
+              placeholderTextColor={theme.placeholderText}
               multiline={true}
               numberOfLines={6}
               value={editEntryText}
               onChangeText={setEditEntryText}
               textAlignVertical="top"
+              autoFocus={true}
             />
 
             <View style={styles.modalButtons}>
@@ -276,234 +300,390 @@ const GameDetailScreen = ({
           </View>
         </View>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showDeleteConfirm}
+        onRequestClose={cancelDelete}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.deleteModal}>
+            <Text style={styles.deleteModalIcon}>⚠️</Text>
+            <Text style={styles.deleteModalTitle}>Delete Entry</Text>
+            <Text style={styles.deleteModalMessage}>
+              Are you sure you want to delete this entry from{" "}
+              {entryToDelete && formatDate(entryToDelete.date)}?
+            </Text>
+            <Text style={styles.deleteModalWarning}>
+              This action cannot be undone.
+            </Text>
+
+            <View style={styles.deleteModalButtons}>
+              <Pressable
+                style={styles.deleteCancelButton}
+                onPress={cancelDelete}
+              >
+                <Text style={styles.deleteCancelButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={styles.deleteConfirmButton}
+                onPress={confirmDelete}
+              >
+                <Text style={styles.deleteConfirmButtonText}>Delete</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  header: {
-    backgroundColor: "white",
-    paddingTop: 50,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-  },
-  headerTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  backButton: {
-    backgroundColor: "#333",
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  backButtonText: {
-    color: "white",
-    fontSize: 16,
-  },
-  settingsButton: {
-    backgroundColor: "#666",
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  settingsButtonText: {
-    color: "white",
-    fontSize: 16,
-  },
-  gameHeader: {
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-  gameImage: {
-    width: 80,
-    height: 80,
-    backgroundColor: "#e0e0e0",
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  imagePlaceholder: {
-    fontSize: 32,
-  },
-  gameTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 15,
-  },
-  addImgButton: {
-    backgroundColor: "#333",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  addImgButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  entriesList: {
-    flex: 1,
-    padding: 20,
-  },
-  entryCard: {
-    backgroundColor: "white",
-    padding: 20,
-    marginBottom: 20,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  entryCardDeleting: {
-    backgroundColor: "#FFF5F5",
-    borderColor: "#FF3B30",
-    borderWidth: 2,
-  },
-  entryHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  entryDate: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    flex: 1,
-  },
-  entryActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  editButton: {
-    backgroundColor: "#007AFF",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  editButtonText: {
-    fontSize: 16,
-  },
-  deleteEntryButton: {
-    backgroundColor: "#FF3B30",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  deleteEntryButtonPressed: {
-    backgroundColor: "#FFE5E5",
-    borderColor: "#FF3B30",
-    borderWidth: 2,
-    transform: [{ scale: 1.15 }],
-  },
-  deleteEntryButtonText: {
-    fontSize: 16,
-  },
-  entryContent: {
-    flexDirection: "row",
-  },
-  entryText: {
-    flex: 1,
-    fontSize: 16,
-    lineHeight: 24,
-    color: "#333",
-    marginRight: 15,
-  },
-  entryImage: {
-    width: 60,
-    height: 60,
-    backgroundColor: "#e0e0e0",
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  entryImagePlaceholder: {
-    fontSize: 20,
-  },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  addEntryModal: {
-    backgroundColor: "white",
-    padding: 20,
-    borderRadius: 12,
-    width: "100%",
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 5,
-  },
-  modalSubtitle: {
-    fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 15,
-    fontSize: 16,
-    minHeight: 120,
-    marginBottom: 20,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: "#666",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  cancelButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: "#333",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  saveButtonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  saveButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-});
+const getStyles = (theme, getTextSize) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      backgroundColor: theme.headerBackground,
+      paddingTop: 50,
+      paddingBottom: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderColor,
+    },
+    headerTop: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      marginBottom: 20,
+    },
+    backButton: {
+      backgroundColor: theme.buttonPrimary,
+      paddingHorizontal: 15,
+      paddingVertical: 8,
+      borderRadius: 6,
+    },
+    backButtonText: {
+      color: theme.isDark ? theme.background : "white",
+      fontSize: getTextSize(16),
+    },
+    settingsButton: {
+      backgroundColor: theme.buttonSecondary,
+      paddingHorizontal: 15,
+      paddingVertical: 8,
+      borderRadius: 6,
+    },
+    settingsButtonText: {
+      color: "white",
+      fontSize: getTextSize(16),
+    },
+    gameHeader: {
+      alignItems: "center",
+      paddingHorizontal: 20,
+    },
+    gameImage: {
+      width: 80,
+      height: 80,
+      backgroundColor: theme.isDark ? "#404040" : "#e0e0e0",
+      borderRadius: 12,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 15,
+    },
+    imagePlaceholder: {
+      fontSize: getTextSize(32),
+    },
+    gameTitle: {
+      fontSize: getTextSize(24),
+      fontWeight: "bold",
+      textAlign: "center",
+      marginBottom: 5,
+      color: theme.text,
+    },
+    gameCategory: {
+      fontSize: getTextSize(14),
+      color: theme.secondaryText,
+      textAlign: "center",
+      marginBottom: 15,
+    },
+    addEntryButton: {
+      backgroundColor: theme.buttonPrimary,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 8,
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    addEntryButtonText: {
+      color: theme.isDark ? theme.background : "white",
+      fontSize: getTextSize(16),
+      fontWeight: "bold",
+    },
+    entriesList: {
+      flex: 1,
+      padding: 20,
+    },
+    emptyState: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 60,
+    },
+    emptyStateIcon: {
+      fontSize: getTextSize(48),
+      marginBottom: 20,
+    },
+    emptyStateTitle: {
+      fontSize: getTextSize(22),
+      fontWeight: "bold",
+      color: theme.text,
+      marginBottom: 8,
+    },
+    emptyStateMessage: {
+      fontSize: getTextSize(16),
+      color: theme.secondaryText,
+      textAlign: "center",
+      marginBottom: 25,
+    },
+    emptyStateButton: {
+      backgroundColor: theme.buttonPrimary,
+      paddingHorizontal: 25,
+      paddingVertical: 12,
+      borderRadius: 8,
+    },
+    emptyStateButtonText: {
+      color: theme.isDark ? theme.background : "white",
+      fontSize: getTextSize(16),
+      fontWeight: "bold",
+    },
+    entryCard: {
+      backgroundColor: theme.cardBackground,
+      padding: 20,
+      marginBottom: 20,
+      borderRadius: 12,
+      shadowColor: theme.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: theme.borderColor,
+    },
+    entryHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 15,
+    },
+    entryDate: {
+      fontSize: getTextSize(18),
+      fontWeight: "bold",
+      color: theme.text,
+      flex: 1,
+      marginRight: 15,
+    },
+    entryActions: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    editButton: {
+      backgroundColor: theme.buttonSuccess,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 6,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    editButtonIcon: {
+      fontSize: getTextSize(14),
+    },
+    editButtonText: {
+      color: "white",
+      fontSize: getTextSize(12),
+      fontWeight: "600",
+    },
+    deleteButton: {
+      backgroundColor: theme.buttonDanger,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 6,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    deleteButtonIcon: {
+      fontSize: getTextSize(14),
+    },
+    deleteButtonText: {
+      color: "white",
+      fontSize: getTextSize(12),
+      fontWeight: "600",
+    },
+    entryContent: {
+      flexDirection: "row",
+    },
+    entryText: {
+      flex: 1,
+      fontSize: getTextSize(16),
+      lineHeight: 24,
+      color: theme.text,
+      marginRight: 15,
+    },
+    entryImagePlaceholder: {
+      width: 60,
+      height: 60,
+      backgroundColor: theme.isDark ? "#3a3a3a" : "#f0f0f0",
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.borderColor,
+      borderStyle: "dashed",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    entryImageIcon: {
+      fontSize: getTextSize(16),
+      marginBottom: 2,
+    },
+    entryImageText: {
+      fontSize: getTextSize(10),
+      color: theme.secondaryText,
+    },
+    // Modal styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: theme.modalOverlay,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 20,
+    },
+    addEntryModal: {
+      backgroundColor: theme.cardBackground,
+      padding: 20,
+      borderRadius: 12,
+      width: "100%",
+      maxWidth: 400,
+    },
+    modalTitle: {
+      fontSize: getTextSize(20),
+      fontWeight: "bold",
+      textAlign: "center",
+      marginBottom: 5,
+      color: theme.text,
+    },
+    modalSubtitle: {
+      fontSize: getTextSize(16),
+      color: theme.secondaryText,
+      textAlign: "center",
+      marginBottom: 20,
+    },
+    textInput: {
+      borderWidth: 1,
+      borderColor: theme.borderColor,
+      borderRadius: 8,
+      padding: 15,
+      fontSize: getTextSize(16),
+      minHeight: 120,
+      marginBottom: 20,
+      backgroundColor: theme.inputBackground,
+      color: theme.text,
+    },
+    modalButtons: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 10,
+    },
+    cancelButton: {
+      flex: 1,
+      backgroundColor: theme.buttonSecondary,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: "center",
+    },
+    cancelButtonText: {
+      color: "white",
+      fontSize: getTextSize(16),
+      fontWeight: "bold",
+    },
+    saveButton: {
+      flex: 1,
+      backgroundColor: theme.buttonPrimary,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: "center",
+    },
+    saveButtonDisabled: {
+      backgroundColor: "#ccc",
+    },
+    saveButtonText: {
+      color: theme.isDark ? theme.background : "white",
+      fontSize: getTextSize(16),
+      fontWeight: "bold",
+    },
+    // Delete modal styles
+    deleteModal: {
+      backgroundColor: theme.cardBackground,
+      padding: 25,
+      borderRadius: 12,
+      maxWidth: 350,
+      width: "100%",
+      alignItems: "center",
+    },
+    deleteModalIcon: {
+      fontSize: getTextSize(40),
+      marginBottom: 15,
+    },
+    deleteModalTitle: {
+      fontSize: getTextSize(20),
+      fontWeight: "bold",
+      marginBottom: 10,
+      color: theme.text,
+    },
+    deleteModalMessage: {
+      fontSize: getTextSize(16),
+      textAlign: "center",
+      color: theme.secondaryText,
+      marginBottom: 8,
+      lineHeight: 22,
+    },
+    deleteModalWarning: {
+      fontSize: getTextSize(14),
+      textAlign: "center",
+      color: theme.buttonDanger,
+      marginBottom: 25,
+      fontWeight: "600",
+    },
+    deleteModalButtons: {
+      flexDirection: "row",
+      gap: 12,
+      width: "100%",
+    },
+    deleteCancelButton: {
+      flex: 1,
+      backgroundColor: theme.buttonSecondary,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: "center",
+    },
+    deleteCancelButtonText: {
+      color: "white",
+      fontSize: getTextSize(16),
+      fontWeight: "bold",
+    },
+    deleteConfirmButton: {
+      flex: 1,
+      backgroundColor: theme.buttonDanger,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: "center",
+    },
+    deleteConfirmButtonText: {
+      color: "white",
+      fontSize: getTextSize(16),
+      fontWeight: "bold",
+    },
+  });
 
 export default GameDetailScreen;
