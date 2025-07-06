@@ -6,52 +6,30 @@ import {
   Pressable,
   Modal,
   Alert,
-  Dimensions,
+  Image,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useTheme } from "../../ThemeContext";
 
-const { width: screenWidth } = Dimensions.get("window");
-
-const PhotoPicker = ({
-  visible,
-  onClose,
-  onPhotoSelected,
-  gameId,
-  entryId,
-}) => {
+const GameImagePicker = ({ visible, onClose, onImageSelected }) => {
   const { theme, getTextSize } = useTheme();
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Function to request permissions
   const requestPermissions = async () => {
     try {
-      // Request camera permission
-      const cameraPermission =
-        await ImagePicker.requestCameraPermissionsAsync();
-      if (cameraPermission.status !== "granted") {
-        Alert.alert(
-          "PERMISSION NEEDED",
-          "CAMERA ACCESS IS REQUIRED TO TAKE PHOTOS. PLEASE ENABLE IN SETTINGS.",
-          [{ text: "OK" }]
-        );
-        return false;
-      }
-
-      // Request media library permission
       const mediaPermission =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (mediaPermission.status !== "granted") {
         Alert.alert(
           "PERMISSION NEEDED",
-          "PHOTO LIBRARY ACCESS IS REQUIRED. PLEASE ENABLE IN SETTINGS.",
+          "PHOTO LIBRARY ACCESS IS REQUIRED TO SELECT GAME COVER ART. PLEASE ENABLE IN SETTINGS.",
           [{ text: "OK" }]
         );
         return false;
       }
-
       return true;
     } catch (error) {
       console.error("Permission request error:", error);
@@ -59,22 +37,22 @@ const PhotoPicker = ({
     }
   };
 
-  // Function to create unique filename
-  const createPhotoFilename = () => {
+  // Function to create unique filename for game image
+  const createGameImageFilename = () => {
     const timestamp = Date.now();
-    return `gamepad_photo_${gameId}_${entryId}_${timestamp}.jpg`;
+    return `gamepad_cover_${timestamp}.jpg`;
   };
 
-  // Function to save and compress photo
-  const processAndSavePhoto = async (uri) => {
+  // Function to save and compress game cover image
+  const processAndSaveImage = async (uri) => {
     try {
       setIsProcessing(true);
 
-      // Compress and resize image
+      // Compress and resize image for game cover (square format)
       const compressedImage = await ImageManipulator.manipulateAsync(
         uri,
         [
-          { resize: { width: Math.min(800, screenWidth * 2) } }, // Max 800px wide
+          { resize: { width: 200, height: 200 } }, // Square format for game covers
         ],
         {
           compress: 0.8, // 80% quality
@@ -82,17 +60,17 @@ const PhotoPicker = ({
         }
       );
 
-      // Create directory for GamePad Notes photos
-      const photosDir = `${FileSystem.documentDirectory}gamepad_photos/`;
-      const dirInfo = await FileSystem.getInfoAsync(photosDir);
+      // Create directory for GamePad Notes covers
+      const coversDir = `${FileSystem.documentDirectory}gamepad_covers/`;
+      const dirInfo = await FileSystem.getInfoAsync(coversDir);
 
       if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(photosDir, { intermediates: true });
+        await FileSystem.makeDirectoryAsync(coversDir, { intermediates: true });
       }
 
       // Create unique filename
-      const filename = createPhotoFilename();
-      const newPath = `${photosDir}${filename}`;
+      const filename = createGameImageFilename();
+      const newPath = `${coversDir}${filename}`;
 
       // Copy compressed image to app directory
       await FileSystem.copyAsync({
@@ -100,9 +78,11 @@ const PhotoPicker = ({
         to: newPath,
       });
 
-      // Create photo object
-      const photoData = {
-        id: Date.now(),
+      // Create image object
+      const imageData = {
+        id: "custom",
+        name: "Custom Image",
+        emoji: null,
         uri: newPath,
         filename: filename,
         width: compressedImage.width,
@@ -111,12 +91,12 @@ const PhotoPicker = ({
       };
 
       setIsProcessing(false);
-      onPhotoSelected(photoData);
+      onImageSelected(imageData);
       onClose();
     } catch (error) {
       setIsProcessing(false);
-      console.error("Photo processing error:", error);
-      Alert.alert("ERROR", "FAILED TO SAVE PHOTO. PLEASE TRY AGAIN.", [
+      console.error("Image processing error:", error);
+      Alert.alert("ERROR", "FAILED TO SAVE IMAGE. PLEASE TRY AGAIN.", [
         { text: "OK" },
       ]);
     }
@@ -124,19 +104,26 @@ const PhotoPicker = ({
 
   // Function to take photo with camera
   const takePhoto = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
+    const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+    if (cameraPermission.status !== "granted") {
+      Alert.alert(
+        "PERMISSION NEEDED",
+        "CAMERA ACCESS IS REQUIRED TO TAKE GAME COVER PHOTOS.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
 
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions?.Images || "Images",
         allowsEditing: true,
-        aspect: [4, 3],
+        aspect: [1, 1], // Square aspect for game covers
         quality: 0.9,
       });
 
       if (!result.canceled && result.assets[0]) {
-        await processAndSavePhoto(result.assets[0].uri);
+        await processAndSaveImage(result.assets[0].uri);
       }
     } catch (error) {
       console.error("Camera error:", error);
@@ -153,16 +140,16 @@ const PhotoPicker = ({
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions?.Images || "Images",
         allowsEditing: true,
-        aspect: [4, 3],
+        aspect: [1, 1], // Square aspect for game covers
         quality: 0.9,
       });
 
       if (!result.canceled && result.assets[0]) {
-        await processAndSavePhoto(result.assets[0].uri);
+        await processAndSaveImage(result.assets[0].uri);
       }
     } catch (error) {
       console.error("Gallery error:", error);
-      Alert.alert("ERROR", "FAILED TO SELECT PHOTO. PLEASE TRY AGAIN.");
+      Alert.alert("ERROR", "FAILED TO SELECT IMAGE. PLEASE TRY AGAIN.");
     }
   };
 
@@ -176,29 +163,31 @@ const PhotoPicker = ({
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.photoPickerModal}>
-          <Text style={styles.modalTitle}>ADD PHOTO</Text>
-          <Text style={styles.modalSubtitle}>CAPTURE YOUR GAMING MOMENTS!</Text>
+        <View style={styles.imagePickerModal}>
+          <Text style={styles.modalTitle}>ADD CUSTOM GAME COVER</Text>
+          <Text style={styles.modalSubtitle}>
+            CHOOSE A CUSTOM IMAGE FOR YOUR GAME
+          </Text>
 
           {isProcessing ? (
             <View style={styles.processingContainer}>
-              <Text style={styles.processingText}>📸 PROCESSING PHOTO...</Text>
+              <Text style={styles.processingText}>🎨 PROCESSING IMAGE...</Text>
             </View>
           ) : (
             <View style={styles.buttonContainer}>
-              <Pressable style={styles.photoButton} onPress={takePhoto}>
-                <Text style={styles.photoButtonIcon}>📷</Text>
-                <Text style={styles.photoButtonText}>TAKE PHOTO</Text>
-                <Text style={styles.photoButtonSubtext}>
-                  USE CAMERA TO CAPTURE MOMENT
+              <Pressable style={styles.imageButton} onPress={takePhoto}>
+                <Text style={styles.imageButtonIcon}>📷</Text>
+                <Text style={styles.imageButtonText}>TAKE PHOTO</Text>
+                <Text style={styles.imageButtonSubtext}>
+                  PHOTOGRAPH GAME BOX OR SCREEN
                 </Text>
               </Pressable>
 
-              <Pressable style={styles.photoButton} onPress={pickFromGallery}>
-                <Text style={styles.photoButtonIcon}>🖼️</Text>
-                <Text style={styles.photoButtonText}>CHOOSE FROM GALLERY</Text>
-                <Text style={styles.photoButtonSubtext}>
-                  SELECT EXISTING SCREENSHOT
+              <Pressable style={styles.imageButton} onPress={pickFromGallery}>
+                <Text style={styles.imageButtonIcon}>🖼️</Text>
+                <Text style={styles.imageButtonText}>CHOOSE FROM GALLERY</Text>
+                <Text style={styles.imageButtonSubtext}>
+                  SELECT EXISTING GAME ARTWORK
                 </Text>
               </Pressable>
             </View>
@@ -226,7 +215,7 @@ const getStyles = (theme, getTextSize) =>
       alignItems: "center",
       padding: 20,
     },
-    photoPickerModal: {
+    imagePickerModal: {
       backgroundColor: theme.cardBackground,
       padding: 25,
       borderRadius: 12,
@@ -248,12 +237,13 @@ const getStyles = (theme, getTextSize) =>
       textAlign: "center",
       marginBottom: 25,
       fontFamily: "monospace",
+      lineHeight: 18,
     },
     buttonContainer: {
       gap: 15,
       marginBottom: 20,
     },
-    photoButton: {
+    imageButton: {
       backgroundColor: theme.isDark ? "#2a3f3b" : "#f0f6f5",
       borderWidth: 2,
       borderColor: theme.borderColor,
@@ -261,17 +251,17 @@ const getStyles = (theme, getTextSize) =>
       padding: 20,
       alignItems: "center",
     },
-    photoButtonIcon: {
+    imageButtonIcon: {
       fontSize: getTextSize(32),
       marginBottom: 10,
     },
-    photoButtonText: {
+    imageButtonText: {
       fontSize: getTextSize(14),
       color: theme.text,
       marginBottom: 5,
       fontFamily: "monospace",
     },
-    photoButtonSubtext: {
+    imageButtonSubtext: {
       fontSize: getTextSize(10),
       color: theme.secondaryText,
       textAlign: "center",
@@ -301,4 +291,4 @@ const getStyles = (theme, getTextSize) =>
     },
   });
 
-export default PhotoPicker;
+export default GameImagePicker;

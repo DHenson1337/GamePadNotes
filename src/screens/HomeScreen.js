@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   Modal,
+  Image,
 } from "react-native";
 import { useTheme } from "../../ThemeContext";
 
@@ -153,9 +154,17 @@ const HomeScreen = ({ navigation, games, addGame, deleteGame }) => {
               {/* Content Row - Icon and Info */}
               <View style={styles.gameContentRow}>
                 <View style={styles.gameImage}>
-                  <Text style={styles.imagePlaceholder}>
-                    {game.image ? game.image.emoji : "🎮"}
-                  </Text>
+                  {game.image && game.image.uri ? (
+                    <Image
+                      source={{ uri: game.image.uri }}
+                      style={styles.customGameImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Text style={styles.imagePlaceholder}>
+                      {game.image ? game.image.emoji : "🎮"}
+                    </Text>
+                  )}
                 </View>
                 <View style={styles.gameInfo}>
                   <Text style={styles.lastEntry}>LAST: {game.lastEntry}</Text>
@@ -400,6 +409,11 @@ const getStyles = (theme, getTextSize) =>
     },
     imagePlaceholder: {
       fontSize: getTextSize(28),
+    },
+    customGameImage: {
+      width: 56,
+      height: 56,
+      borderRadius: 8,
     },
     gameInfo: {
       flex: 1,

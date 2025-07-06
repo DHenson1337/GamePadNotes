@@ -173,9 +173,17 @@ const GameDetailScreen = ({
 
         <View style={styles.gameHeader}>
           <View style={styles.gameImage}>
-            <Text style={styles.imagePlaceholder}>
-              {game.image ? game.image.emoji : "🎮"}
-            </Text>
+            {game.image && game.image.uri ? (
+              <Image
+                source={{ uri: game.image.uri }}
+                style={styles.customGameHeaderImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={styles.imagePlaceholder}>
+                {game.image ? game.image.emoji : "🎮"}
+              </Text>
+            )}
           </View>
           <Text style={styles.gameTitle}>{game.title.toUpperCase()}</Text>
           {game.image && game.image.id !== "default" && (
@@ -245,10 +253,12 @@ const GameDetailScreen = ({
                 <Text style={styles.entryText}>{entry.text}</Text>
               </View>
 
-              {/* Photo Gallery for Entry */}
+              {/* Photo Gallery for Entry - Only show if photos exist */}
               {entry.images && entry.images.length > 0 && (
                 <View style={styles.photoGallery}>
-                  <Text style={styles.photoGalleryTitle}>PHOTOS:</Text>
+                  <Text style={styles.photoGalleryTitle}>
+                    PHOTOS ({entry.images.length}):
+                  </Text>
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -272,6 +282,21 @@ const GameDetailScreen = ({
                       </View>
                     ))}
                   </ScrollView>
+                </View>
+              )}
+
+              {/* Show helpful message if no photos */}
+              {(!entry.images || entry.images.length === 0) && (
+                <View style={styles.noPhotosContainer}>
+                  <Pressable
+                    style={styles.addFirstPhotoButton}
+                    onPress={() => handleAddPhoto(entry.id)}
+                  >
+                    <Text style={styles.addFirstPhotoIcon}>📷</Text>
+                    <Text style={styles.addFirstPhotoText}>
+                      TAP TO ADD FIRST PHOTO
+                    </Text>
+                  </Pressable>
                 </View>
               )}
             </View>
@@ -510,6 +535,11 @@ const getStyles = (theme, getTextSize) =>
     imagePlaceholder: {
       fontSize: getTextSize(32),
     },
+    customGameHeaderImage: {
+      width: 76,
+      height: 76,
+      borderRadius: 8,
+    },
     gameTitle: {
       fontSize: getTextSize(16),
       textAlign: "center",
@@ -706,6 +736,35 @@ const getStyles = (theme, getTextSize) =>
     },
     photoDeleteIcon: {
       fontSize: 10,
+    },
+    // No Photos State
+    noPhotosContainer: {
+      marginTop: 10,
+      paddingTop: 15,
+      borderTopWidth: 1,
+      borderTopColor: theme.borderColor,
+    },
+    addFirstPhotoButton: {
+      backgroundColor: theme.isDark
+        ? "rgba(163, 212, 208, 0.1)"
+        : "rgba(74, 155, 150, 0.1)",
+      borderWidth: 2,
+      borderColor: theme.borderColor,
+      borderStyle: "dashed",
+      borderRadius: 8,
+      padding: 15,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    addFirstPhotoIcon: {
+      fontSize: getTextSize(24),
+      marginBottom: 8,
+    },
+    addFirstPhotoText: {
+      fontSize: getTextSize(10),
+      color: theme.secondaryText,
+      fontFamily: "monospace",
+      textAlign: "center",
     },
     // Photo Viewer Styles
     photoViewerOverlay: {

@@ -7,14 +7,18 @@ import {
   Pressable,
   ScrollView,
   Modal,
+  Image,
 } from "react-native";
-import { useTheme } from "../../ThemeContext"; // ONLY ONE IMPORT!
+import { useTheme } from "../../ThemeContext";
+import GameImagePicker from "../components/GameImagePicker";
 
 const AddGameScreen = ({ navigation, addGame }) => {
   const { theme, getTextSize } = useTheme();
   const [gameTitle, setGameTitle] = useState("");
   const [selectedImage, setSelectedImage] = useState("default");
+  const [customImage, setCustomImage] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showImagePicker, setShowImagePicker] = useState(false);
 
   // Default game image options
   const imageOptions = [
@@ -31,12 +35,23 @@ const AddGameScreen = ({ navigation, addGame }) => {
   // Function to handle adding the game
   const handleAddGame = () => {
     if (gameTitle.trim()) {
-      const selectedImageData = imageOptions.find(
-        (img) => img.id === selectedImage
-      );
-      addGame(gameTitle.trim(), selectedImageData);
+      let imageToUse = null;
+
+      if (selectedImage === "custom" && customImage) {
+        imageToUse = customImage;
+      } else {
+        imageToUse = imageOptions.find((img) => img.id === selectedImage);
+      }
+
+      addGame(gameTitle.trim(), imageToUse);
       setShowSuccessModal(true);
     }
+  };
+
+  // Function to handle custom image selection
+  const handleCustomImageSelected = (imageData) => {
+    setCustomImage(imageData);
+    setSelectedImage("custom");
   };
 
   // Function to handle success modal close
@@ -97,12 +112,35 @@ const AddGameScreen = ({ navigation, addGame }) => {
           </View>
         </View>
 
-        {/* Custom Image Option (Placeholder for now) */}
+        {/* Custom Image Option - Now functional! */}
         <View style={styles.section}>
-          <Pressable style={styles.customImageButton}>
-            <Text style={styles.customImageText}>
-              📷 ADD CUSTOM IMAGE (COMING SOON)
-            </Text>
+          <Pressable
+            style={[
+              styles.customImageButton,
+              selectedImage === "custom" && styles.customImageButtonSelected,
+            ]}
+            onPress={() => setShowImagePicker(true)}
+          >
+            {customImage ? (
+              <View style={styles.customImagePreview}>
+                <Image
+                  source={{ uri: customImage.uri }}
+                  style={styles.customImageThumbnail}
+                  resizeMode="cover"
+                />
+                <Text style={styles.customImageText}>
+                  CUSTOM IMAGE SELECTED
+                </Text>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.customImageIcon}>📷</Text>
+                <Text style={styles.customImageText}>ADD CUSTOM IMAGE</Text>
+                <Text style={styles.customImageSubtext}>
+                  TAP TO SELECT GAME COVER ART
+                </Text>
+              </>
+            )}
           </Pressable>
         </View>
       </ScrollView>
@@ -120,6 +158,13 @@ const AddGameScreen = ({ navigation, addGame }) => {
           <Text style={styles.addButtonText}>🚀 ADD GAME</Text>
         </Pressable>
       </View>
+
+      {/* Custom Game Image Picker */}
+      <GameImagePicker
+        visible={showImagePicker}
+        onClose={() => setShowImagePicker(false)}
+        onImageSelected={handleCustomImageSelected}
+      />
 
       {/* Success Modal */}
       <Modal
@@ -242,14 +287,41 @@ const getStyles = (theme, getTextSize) =>
       borderWidth: 2,
       borderColor: theme.borderColor,
       borderStyle: "dashed",
-      borderRadius: 4,
+      borderRadius: 8,
       padding: 20,
       alignItems: "center",
     },
+    customImageButtonSelected: {
+      borderColor: theme.buttonSuccess,
+      borderStyle: "solid",
+      backgroundColor: theme.isDark ? "#0A3A2A" : "#E8F5E8",
+    },
+    customImageIcon: {
+      fontSize: getTextSize(32),
+      marginBottom: 10,
+    },
     customImageText: {
       fontSize: getTextSize(12),
+      color: theme.text,
+      fontFamily: "monospace",
+      marginBottom: 5,
+    },
+    customImageSubtext: {
+      fontSize: getTextSize(10),
       color: theme.secondaryText,
       fontFamily: "monospace",
+      textAlign: "center",
+    },
+    customImagePreview: {
+      alignItems: "center",
+    },
+    customImageThumbnail: {
+      width: 80,
+      height: 80,
+      borderRadius: 8,
+      marginBottom: 10,
+      borderWidth: 2,
+      borderColor: theme.borderColor,
     },
     bottomSection: {
       backgroundColor: theme.headerBackground,
