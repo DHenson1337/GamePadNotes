@@ -10,20 +10,52 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#f8faf9"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "GamePad Notes needs camera access to take photos of your gaming moments and achievements.",
+        "NSPhotoLibraryUsageDescription": "GamePad Notes needs photo library access to attach gaming screenshots to your notes."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#f8faf9"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "GamePad Notes needs camera access to take photos of your gaming moments and achievements."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "GamePad Notes needs photo library access to attach gaming screenshots to your notes.",
+          "savePhotosPermission": "GamePad Notes needs permission to save photos to your device.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "GamePad Notes needs photo library access to select images for your gaming notes."
+        }
+      ]
+    ]
   }
 }

@@ -8,8 +8,13 @@ import {
   Pressable,
   Modal,
   Alert,
+  Image,
+  Dimensions,
 } from "react-native";
-import { useTheme } from "../../App";
+import { useTheme } from "../../ThemeContext";
+import PhotoPicker from "../components/PhotoPicker";
+
+const { width: screenWidth } = Dimensions.get("window");
 
 const GameDetailScreen = ({
   route,
@@ -18,13 +23,13 @@ const GameDetailScreen = ({
   addEntry,
   editEntry,
   deleteEntry,
+  addPhotoToEntry,
+  deletePhotoFromEntry,
 }) => {
   const { theme, getTextSize } = useTheme();
-  // Get the game data passed from HomeScreen
   const { gameId } = route.params;
   const game = getGame(gameId);
 
-  // If game not found, go back
   if (!game) {
     navigation.goBack();
     return null;
@@ -37,7 +42,12 @@ const GameDetailScreen = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState(null);
 
-  // Helper function to get today's date in local timezone
+  // Photo-related state
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
+  const [currentEntryForPhoto, setCurrentEntryForPhoto] = useState(null);
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+
   const getTodaysDate = () => {
     const today = new Date();
     const year = today.getFullYear();
@@ -46,22 +56,23 @@ const GameDetailScreen = ({
     return `${year}-${month}-${day}`;
   };
 
-  // Function to add a new entry
   const handleAddEntry = () => {
     if (newEntryText.trim()) {
-      addEntry(gameId, newEntryText);
+      const newEntryId = addEntry(gameId, newEntryText);
       setNewEntryText("");
       setShowAddEntry(false);
+
+      // If we want to add a photo immediately, open photo picker
+      // setCurrentEntryForPhoto(newEntryId);
+      // setShowPhotoPicker(true);
     }
   };
 
-  // Function to start editing an entry
   const handleEditEntry = (entry) => {
     setEditingEntry(entry);
     setEditEntryText(entry.text);
   };
 
-  // Function to save edited entry
   const handleSaveEdit = () => {
     if (editEntryText.trim() && editingEntry) {
       editEntry(gameId, editingEntry.id, editEntryText.trim());
@@ -70,19 +81,16 @@ const GameDetailScreen = ({
     }
   };
 
-  // Function to cancel editing
   const handleCancelEdit = () => {
     setEditingEntry(null);
     setEditEntryText("");
   };
 
-  // Function to show delete confirmation
   const handleDeleteEntry = (entry) => {
     setEntryToDelete(entry);
     setShowDeleteConfirm(true);
   };
 
-  // Function to confirm delete
   const confirmDelete = () => {
     if (entryToDelete) {
       deleteEntry(gameId, entryToDelete.id);
@@ -91,24 +99,55 @@ const GameDetailScreen = ({
     }
   };
 
-  // Function to cancel delete
   const cancelDelete = () => {
     setShowDeleteConfirm(false);
     setEntryToDelete(null);
   };
 
-  // Function to format date nicely
-  const formatDate = (dateString) => {
-    // Create date object from the YYYY-MM-DD string
-    const [year, month, day] = dateString.split("-");
-    const date = new Date(year, month - 1, day); // month is 0-indexed in Date constructor
+  // Photo functions
+  const handleAddPhoto = (entryId) => {
+    setCurrentEntryForPhoto(entryId);
+    setShowPhotoPicker(true);
+  };
 
-    return date.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+  const handlePhotoSelected = (photoData) => {
+    if (currentEntryForPhoto && addPhotoToEntry) {
+      addPhotoToEntry(gameId, currentEntryForPhoto, photoData);
+    }
+    setCurrentEntryForPhoto(null);
+  };
+
+  const handleViewPhoto = (photo) => {
+    setSelectedPhoto(photo);
+    setShowPhotoViewer(true);
+  };
+
+  const handleDeletePhoto = (entryId, photoId) => {
+    Alert.alert("DELETE PHOTO", "ARE YOU SURE YOU WANT TO DELETE THIS PHOTO?", [
+      { text: "CANCEL", style: "cancel" },
+      {
+        text: "DELETE",
+        style: "destructive",
+        onPress: () => {
+          if (deletePhotoFromEntry) {
+            deletePhotoFromEntry(gameId, entryId, photoId);
+          }
+        },
+      },
+    ]);
+  };
+
+  const formatDate = (dateString) => {
+    const [year, month, day] = dateString.split("-");
+    const date = new Date(year, month - 1, day);
+    return date
+      .toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+      .toUpperCase();
   };
 
   const styles = getStyles(theme, getTextSize);
@@ -122,13 +161,13 @@ const GameDetailScreen = ({
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={styles.backButtonText}>← BACK</Text>
           </Pressable>
           <Pressable
             style={styles.settingsButton}
             onPress={() => navigation.navigate("Settings")}
           >
-            <Text style={styles.settingsButtonText}>⚙️ Settings</Text>
+            <Text style={styles.settingsButtonText}>⚙️ SETTINGS</Text>
           </Pressable>
         </View>
 
@@ -138,15 +177,17 @@ const GameDetailScreen = ({
               {game.image ? game.image.emoji : "🎮"}
             </Text>
           </View>
-          <Text style={styles.gameTitle}>{game.title}</Text>
+          <Text style={styles.gameTitle}>{game.title.toUpperCase()}</Text>
           {game.image && game.image.id !== "default" && (
-            <Text style={styles.gameCategory}>{game.image.name}</Text>
+            <Text style={styles.gameCategory}>
+              {game.image.name.toUpperCase()}
+            </Text>
           )}
           <Pressable
             style={styles.addEntryButton}
             onPress={() => setShowAddEntry(true)}
           >
-            <Text style={styles.addEntryButtonText}>+ Add Entry</Text>
+            <Text style={styles.addEntryButtonText}>+ ADD ENTRY</Text>
           </Pressable>
         </View>
       </View>
@@ -159,15 +200,15 @@ const GameDetailScreen = ({
         {game.entries.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateIcon}>📝</Text>
-            <Text style={styles.emptyStateTitle}>No entries yet</Text>
+            <Text style={styles.emptyStateTitle}>NO ENTRIES YET</Text>
             <Text style={styles.emptyStateMessage}>
-              Start documenting your gaming journey!
+              START DOCUMENTING YOUR GAMING JOURNEY!
             </Text>
             <Pressable
               style={styles.emptyStateButton}
               onPress={() => setShowAddEntry(true)}
             >
-              <Text style={styles.emptyStateButtonText}>Add First Entry</Text>
+              <Text style={styles.emptyStateButtonText}>ADD FIRST ENTRY</Text>
             </Pressable>
           </View>
         ) : (
@@ -177,33 +218,102 @@ const GameDetailScreen = ({
                 <Text style={styles.entryDate}>{formatDate(entry.date)}</Text>
                 <View style={styles.entryActions}>
                   <Pressable
+                    style={styles.photoButton}
+                    onPress={() => handleAddPhoto(entry.id)}
+                  >
+                    <Text style={styles.photoButtonIcon}>📷</Text>
+                    <Text style={styles.photoButtonText}>PHOTO</Text>
+                  </Pressable>
+                  <Pressable
                     style={styles.editButton}
                     onPress={() => handleEditEntry(entry)}
                   >
                     <Text style={styles.editButtonIcon}>✏️</Text>
-                    <Text style={styles.editButtonText}>Edit</Text>
+                    <Text style={styles.editButtonText}>EDIT</Text>
                   </Pressable>
                   <Pressable
                     style={styles.deleteButton}
                     onPress={() => handleDeleteEntry(entry)}
                   >
                     <Text style={styles.deleteButtonIcon}>🗑️</Text>
-                    <Text style={styles.deleteButtonText}>Delete</Text>
+                    <Text style={styles.deleteButtonText}>DEL</Text>
                   </Pressable>
                 </View>
               </View>
+
               <View style={styles.entryContent}>
                 <Text style={styles.entryText}>{entry.text}</Text>
-                {/* Placeholder for images */}
-                <View style={styles.entryImagePlaceholder}>
-                  <Text style={styles.entryImageIcon}>📷</Text>
-                  <Text style={styles.entryImageText}>Photo</Text>
-                </View>
               </View>
+
+              {/* Photo Gallery for Entry */}
+              {entry.images && entry.images.length > 0 && (
+                <View style={styles.photoGallery}>
+                  <Text style={styles.photoGalleryTitle}>PHOTOS:</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.photoScroll}
+                  >
+                    {entry.images.map((photo) => (
+                      <View key={photo.id} style={styles.photoContainer}>
+                        <Pressable onPress={() => handleViewPhoto(photo)}>
+                          <Image
+                            source={{ uri: photo.uri }}
+                            style={styles.photoThumbnail}
+                            resizeMode="cover"
+                          />
+                        </Pressable>
+                        <Pressable
+                          style={styles.photoDeleteButton}
+                          onPress={() => handleDeletePhoto(entry.id, photo.id)}
+                        >
+                          <Text style={styles.photoDeleteIcon}>🗑️</Text>
+                        </Pressable>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
             </View>
           ))
         )}
       </ScrollView>
+
+      {/* Photo Picker Modal */}
+      <PhotoPicker
+        visible={showPhotoPicker}
+        onClose={() => {
+          setShowPhotoPicker(false);
+          setCurrentEntryForPhoto(null);
+        }}
+        onPhotoSelected={handlePhotoSelected}
+        gameId={gameId}
+        entryId={currentEntryForPhoto}
+      />
+
+      {/* Photo Viewer Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showPhotoViewer}
+        onRequestClose={() => setShowPhotoViewer(false)}
+      >
+        <View style={styles.photoViewerOverlay}>
+          <Pressable
+            style={styles.photoViewerClose}
+            onPress={() => setShowPhotoViewer(false)}
+          >
+            <Text style={styles.photoViewerCloseText}>✕ CLOSE</Text>
+          </Pressable>
+          {selectedPhoto && (
+            <Image
+              source={{ uri: selectedPhoto.uri }}
+              style={styles.photoViewerImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
 
       {/* Add Entry Modal */}
       <Modal
@@ -214,14 +324,14 @@ const GameDetailScreen = ({
       >
         <View style={styles.modalOverlay}>
           <View style={styles.addEntryModal}>
-            <Text style={styles.modalTitle}>Add New Entry</Text>
+            <Text style={styles.modalTitle}>ADD NEW ENTRY</Text>
             <Text style={styles.modalSubtitle}>
               {formatDate(getTodaysDate())}
             </Text>
 
             <TextInput
               style={styles.textInput}
-              placeholder="Write your game notes here..."
+              placeholder="WRITE YOUR GAME NOTES HERE..."
               placeholderTextColor={theme.placeholderText}
               multiline={true}
               numberOfLines={6}
@@ -239,7 +349,7 @@ const GameDetailScreen = ({
                   setNewEntryText("");
                 }}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>CANCEL</Text>
               </Pressable>
               <Pressable
                 style={[
@@ -249,7 +359,7 @@ const GameDetailScreen = ({
                 onPress={handleAddEntry}
                 disabled={!newEntryText.trim()}
               >
-                <Text style={styles.saveButtonText}>Save Entry</Text>
+                <Text style={styles.saveButtonText}>SAVE ENTRY</Text>
               </Pressable>
             </View>
           </View>
@@ -265,14 +375,14 @@ const GameDetailScreen = ({
       >
         <View style={styles.modalOverlay}>
           <View style={styles.addEntryModal}>
-            <Text style={styles.modalTitle}>Edit Entry</Text>
+            <Text style={styles.modalTitle}>EDIT ENTRY</Text>
             <Text style={styles.modalSubtitle}>
               {editingEntry && formatDate(editingEntry.date)}
             </Text>
 
             <TextInput
               style={styles.textInput}
-              placeholder="Edit your game notes..."
+              placeholder="EDIT YOUR GAME NOTES..."
               placeholderTextColor={theme.placeholderText}
               multiline={true}
               numberOfLines={6}
@@ -284,7 +394,7 @@ const GameDetailScreen = ({
 
             <View style={styles.modalButtons}>
               <Pressable style={styles.cancelButton} onPress={handleCancelEdit}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>CANCEL</Text>
               </Pressable>
               <Pressable
                 style={[
@@ -294,7 +404,7 @@ const GameDetailScreen = ({
                 onPress={handleSaveEdit}
                 disabled={!editEntryText.trim()}
               >
-                <Text style={styles.saveButtonText}>Save Changes</Text>
+                <Text style={styles.saveButtonText}>SAVE CHANGES</Text>
               </Pressable>
             </View>
           </View>
@@ -311,13 +421,13 @@ const GameDetailScreen = ({
         <View style={styles.modalOverlay}>
           <View style={styles.deleteModal}>
             <Text style={styles.deleteModalIcon}>⚠️</Text>
-            <Text style={styles.deleteModalTitle}>Delete Entry</Text>
+            <Text style={styles.deleteModalTitle}>DELETE ENTRY</Text>
             <Text style={styles.deleteModalMessage}>
-              Are you sure you want to delete this entry from{" "}
+              DELETE ENTRY FROM{" "}
               {entryToDelete && formatDate(entryToDelete.date)}?
             </Text>
             <Text style={styles.deleteModalWarning}>
-              This action cannot be undone.
+              THIS CANNOT BE UNDONE!
             </Text>
 
             <View style={styles.deleteModalButtons}>
@@ -325,13 +435,13 @@ const GameDetailScreen = ({
                 style={styles.deleteCancelButton}
                 onPress={cancelDelete}
               >
-                <Text style={styles.deleteCancelButtonText}>Cancel</Text>
+                <Text style={styles.deleteCancelButtonText}>CANCEL</Text>
               </Pressable>
               <Pressable
                 style={styles.deleteConfirmButton}
                 onPress={confirmDelete}
               >
-                <Text style={styles.deleteConfirmButtonText}>Delete</Text>
+                <Text style={styles.deleteConfirmButtonText}>DELETE</Text>
               </Pressable>
             </View>
           </View>
@@ -351,7 +461,7 @@ const getStyles = (theme, getTextSize) =>
       backgroundColor: theme.headerBackground,
       paddingTop: 50,
       paddingBottom: 20,
-      borderBottomWidth: 1,
+      borderBottomWidth: 2,
       borderBottomColor: theme.borderColor,
     },
     headerTop: {
@@ -367,8 +477,9 @@ const getStyles = (theme, getTextSize) =>
       borderRadius: 6,
     },
     backButtonText: {
-      color: theme.isDark ? theme.background : "white",
-      fontSize: getTextSize(16),
+      color: theme.isDark ? theme.text : "white",
+      fontSize: getTextSize(12),
+      fontFamily: "monospace",
     },
     settingsButton: {
       backgroundColor: theme.buttonSecondary,
@@ -378,7 +489,8 @@ const getStyles = (theme, getTextSize) =>
     },
     settingsButtonText: {
       color: "white",
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(12),
+      fontFamily: "monospace",
     },
     gameHeader: {
       alignItems: "center",
@@ -387,8 +499,10 @@ const getStyles = (theme, getTextSize) =>
     gameImage: {
       width: 80,
       height: 80,
-      backgroundColor: theme.isDark ? "#404040" : "#e0e0e0",
-      borderRadius: 12,
+      backgroundColor: theme.isDark ? "#2a3a36" : "#e8f4f0",
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: theme.borderColor,
       justifyContent: "center",
       alignItems: "center",
       marginBottom: 15,
@@ -397,30 +511,30 @@ const getStyles = (theme, getTextSize) =>
       fontSize: getTextSize(32),
     },
     gameTitle: {
-      fontSize: getTextSize(24),
-      fontWeight: "bold",
+      fontSize: getTextSize(16),
       textAlign: "center",
       marginBottom: 5,
       color: theme.text,
+      fontFamily: "monospace",
+      lineHeight: 22,
     },
     gameCategory: {
-      fontSize: getTextSize(14),
+      fontSize: getTextSize(12),
       color: theme.secondaryText,
       textAlign: "center",
       marginBottom: 15,
+      fontFamily: "monospace",
     },
     addEntryButton: {
       backgroundColor: theme.buttonPrimary,
       paddingHorizontal: 20,
       paddingVertical: 12,
-      borderRadius: 8,
-      flexDirection: "row",
-      alignItems: "center",
+      borderRadius: 6,
     },
     addEntryButtonText: {
-      color: theme.isDark ? theme.background : "white",
-      fontSize: getTextSize(16),
-      fontWeight: "bold",
+      color: theme.isDark ? theme.text : "white",
+      fontSize: getTextSize(12),
+      fontFamily: "monospace",
     },
     entriesList: {
       flex: 1,
@@ -436,40 +550,42 @@ const getStyles = (theme, getTextSize) =>
       marginBottom: 20,
     },
     emptyStateTitle: {
-      fontSize: getTextSize(22),
-      fontWeight: "bold",
+      fontSize: getTextSize(18),
       color: theme.text,
       marginBottom: 8,
+      fontFamily: "monospace",
     },
     emptyStateMessage: {
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(12),
       color: theme.secondaryText,
       textAlign: "center",
       marginBottom: 25,
+      fontFamily: "monospace",
+      lineHeight: 18,
     },
     emptyStateButton: {
       backgroundColor: theme.buttonPrimary,
       paddingHorizontal: 25,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: 6,
     },
     emptyStateButtonText: {
-      color: theme.isDark ? theme.background : "white",
-      fontSize: getTextSize(16),
-      fontWeight: "bold",
+      color: theme.isDark ? theme.text : "white",
+      fontSize: getTextSize(12),
+      fontFamily: "monospace",
     },
     entryCard: {
       backgroundColor: theme.cardBackground,
-      padding: 20,
+      padding: 18,
       marginBottom: 20,
       borderRadius: 12,
+      borderWidth: 2,
+      borderColor: theme.borderColor,
       shadowColor: theme.shadowColor,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
       shadowRadius: 4,
       elevation: 3,
-      borderWidth: 1,
-      borderColor: theme.borderColor,
     },
     entryHeader: {
       flexDirection: "row",
@@ -478,78 +594,145 @@ const getStyles = (theme, getTextSize) =>
       marginBottom: 15,
     },
     entryDate: {
-      fontSize: getTextSize(18),
-      fontWeight: "bold",
+      fontSize: getTextSize(12),
       color: theme.text,
       flex: 1,
       marginRight: 15,
+      fontFamily: "monospace",
     },
     entryActions: {
       flexDirection: "row",
-      gap: 8,
+      gap: 6,
+    },
+    photoButton: {
+      backgroundColor: theme.buttonPrimary,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      borderRadius: 4,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+    },
+    photoButtonIcon: {
+      fontSize: getTextSize(10),
+    },
+    photoButtonText: {
+      color: theme.isDark ? theme.text : "white",
+      fontSize: getTextSize(8),
+      fontFamily: "monospace",
     },
     editButton: {
       backgroundColor: theme.buttonSuccess,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 6,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      borderRadius: 4,
       flexDirection: "row",
       alignItems: "center",
-      gap: 4,
+      gap: 3,
     },
     editButtonIcon: {
-      fontSize: getTextSize(14),
+      fontSize: getTextSize(10),
     },
     editButtonText: {
       color: "white",
-      fontSize: getTextSize(12),
-      fontWeight: "600",
+      fontSize: getTextSize(8),
+      fontFamily: "monospace",
     },
     deleteButton: {
       backgroundColor: theme.buttonDanger,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 6,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      borderRadius: 4,
       flexDirection: "row",
       alignItems: "center",
-      gap: 4,
+      gap: 3,
     },
     deleteButtonIcon: {
-      fontSize: getTextSize(14),
+      fontSize: getTextSize(10),
     },
     deleteButtonText: {
       color: "white",
-      fontSize: getTextSize(12),
-      fontWeight: "600",
+      fontSize: getTextSize(8),
+      fontFamily: "monospace",
     },
     entryContent: {
-      flexDirection: "row",
+      marginBottom: 15,
     },
     entryText: {
-      flex: 1,
-      fontSize: getTextSize(16),
-      lineHeight: 24,
+      fontSize: getTextSize(14),
+      lineHeight: 20,
       color: theme.text,
-      marginRight: 15,
+      fontFamily: "monospace",
     },
-    entryImagePlaceholder: {
-      width: 60,
-      height: 60,
-      backgroundColor: theme.isDark ? "#3a3a3a" : "#f0f0f0",
+    // Photo Gallery Styles
+    photoGallery: {
+      marginTop: 10,
+      paddingTop: 15,
+      borderTopWidth: 1,
+      borderTopColor: theme.borderColor,
+    },
+    photoGalleryTitle: {
+      fontSize: getTextSize(10),
+      color: theme.secondaryText,
+      marginBottom: 10,
+      fontFamily: "monospace",
+    },
+    photoScroll: {
+      flexDirection: "row",
+    },
+    photoContainer: {
+      marginRight: 10,
+      position: "relative",
+    },
+    photoThumbnail: {
+      width: 80,
+      height: 80,
       borderRadius: 8,
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: theme.borderColor,
-      borderStyle: "dashed",
+    },
+    photoDeleteButton: {
+      position: "absolute",
+      top: -5,
+      right: -5,
+      backgroundColor: theme.buttonDanger,
+      borderRadius: 12,
+      width: 24,
+      height: 24,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: theme.cardBackground,
+    },
+    photoDeleteIcon: {
+      fontSize: 10,
+    },
+    // Photo Viewer Styles
+    photoViewerOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.9)",
       justifyContent: "center",
       alignItems: "center",
     },
-    entryImageIcon: {
-      fontSize: getTextSize(16),
-      marginBottom: 2,
+    photoViewerClose: {
+      position: "absolute",
+      top: 50,
+      right: 20,
+      backgroundColor: theme.buttonSecondary,
+      paddingHorizontal: 15,
+      paddingVertical: 8,
+      borderRadius: 6,
+      zIndex: 1,
     },
-    entryImageText: {
-      fontSize: getTextSize(10),
-      color: theme.secondaryText,
+    photoViewerCloseText: {
+      color: "white",
+      fontSize: getTextSize(12),
+      fontFamily: "monospace",
+    },
+    photoViewerImage: {
+      width: screenWidth - 40,
+      height: screenWidth - 40,
+      maxHeight: "80%",
     },
     // Modal styles
     modalOverlay: {
@@ -565,30 +748,34 @@ const getStyles = (theme, getTextSize) =>
       borderRadius: 12,
       width: "100%",
       maxWidth: 400,
+      borderWidth: 2,
+      borderColor: theme.borderColor,
     },
     modalTitle: {
-      fontSize: getTextSize(20),
-      fontWeight: "bold",
+      fontSize: getTextSize(16),
       textAlign: "center",
       marginBottom: 5,
       color: theme.text,
+      fontFamily: "monospace",
     },
     modalSubtitle: {
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(12),
       color: theme.secondaryText,
       textAlign: "center",
       marginBottom: 20,
+      fontFamily: "monospace",
     },
     textInput: {
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: theme.borderColor,
-      borderRadius: 8,
+      borderRadius: 6,
       padding: 15,
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(14),
       minHeight: 120,
       marginBottom: 20,
       backgroundColor: theme.inputBackground,
       color: theme.text,
+      fontFamily: "monospace",
     },
     modalButtons: {
       flexDirection: "row",
@@ -599,28 +786,28 @@ const getStyles = (theme, getTextSize) =>
       flex: 1,
       backgroundColor: theme.buttonSecondary,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: 6,
       alignItems: "center",
     },
     cancelButtonText: {
       color: "white",
-      fontSize: getTextSize(16),
-      fontWeight: "bold",
+      fontSize: getTextSize(12),
+      fontFamily: "monospace",
     },
     saveButton: {
       flex: 1,
       backgroundColor: theme.buttonPrimary,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: 6,
       alignItems: "center",
     },
     saveButtonDisabled: {
       backgroundColor: "#ccc",
     },
     saveButtonText: {
-      color: theme.isDark ? theme.background : "white",
-      fontSize: getTextSize(16),
-      fontWeight: "bold",
+      color: theme.isDark ? theme.text : "white",
+      fontSize: getTextSize(12),
+      fontFamily: "monospace",
     },
     // Delete modal styles
     deleteModal: {
@@ -630,30 +817,33 @@ const getStyles = (theme, getTextSize) =>
       maxWidth: 350,
       width: "100%",
       alignItems: "center",
+      borderWidth: 2,
+      borderColor: theme.borderColor,
     },
     deleteModalIcon: {
       fontSize: getTextSize(40),
       marginBottom: 15,
     },
     deleteModalTitle: {
-      fontSize: getTextSize(20),
-      fontWeight: "bold",
+      fontSize: getTextSize(16),
       marginBottom: 10,
       color: theme.text,
+      fontFamily: "monospace",
     },
     deleteModalMessage: {
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(12),
       textAlign: "center",
       color: theme.secondaryText,
       marginBottom: 8,
-      lineHeight: 22,
+      lineHeight: 18,
+      fontFamily: "monospace",
     },
     deleteModalWarning: {
-      fontSize: getTextSize(14),
+      fontSize: getTextSize(11),
       textAlign: "center",
       color: theme.buttonDanger,
       marginBottom: 25,
-      fontWeight: "600",
+      fontFamily: "monospace",
     },
     deleteModalButtons: {
       flexDirection: "row",
@@ -664,25 +854,25 @@ const getStyles = (theme, getTextSize) =>
       flex: 1,
       backgroundColor: theme.buttonSecondary,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: 6,
       alignItems: "center",
     },
     deleteCancelButtonText: {
       color: "white",
-      fontSize: getTextSize(16),
-      fontWeight: "bold",
+      fontSize: getTextSize(12),
+      fontFamily: "monospace",
     },
     deleteConfirmButton: {
       flex: 1,
       backgroundColor: theme.buttonDanger,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: 6,
       alignItems: "center",
     },
     deleteConfirmButtonText: {
       color: "white",
-      fontSize: getTextSize(16),
-      fontWeight: "bold",
+      fontSize: getTextSize(12),
+      fontFamily: "monospace",
     },
   });
 

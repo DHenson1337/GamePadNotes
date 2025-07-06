@@ -7,7 +7,7 @@ import {
   Pressable,
   Modal,
 } from "react-native";
-import { useTheme } from "../../App";
+import { useTheme } from "../../ThemeContext";
 
 const HomeScreen = ({ navigation, games, addGame, deleteGame }) => {
   const { theme, getTextSize } = useTheme();
@@ -31,7 +31,7 @@ const HomeScreen = ({ navigation, games, addGame, deleteGame }) => {
     navigation.navigate("AddGame");
   };
 
-  // Function to handle settings - NOW PROPERLY NAVIGATES
+  // Function to handle settings
   const handleSettings = () => {
     navigation.navigate("Settings");
   };
@@ -65,10 +65,8 @@ const HomeScreen = ({ navigation, games, addGame, deleteGame }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.welcome}>Welcome, Gamer! 🎮</Text>
-        <Text style={styles.quote}>
-          "Every game is a new adventure waiting to be discovered"
-        </Text>
+        <Text style={styles.welcome}>WELCOME, GAMER! 🎮</Text>
+        <Text style={styles.quote}>"EVERY GAME IS A NEW ADVENTURE"</Text>
 
         <View style={styles.headerButtons}>
           <Pressable
@@ -78,7 +76,7 @@ const HomeScreen = ({ navigation, games, addGame, deleteGame }) => {
             ]}
             onPress={handleAddGame}
           >
-            <Text style={styles.addButtonText}>+ Add Game</Text>
+            <Text style={styles.addButtonText}>+ ADD GAME</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [
@@ -87,7 +85,7 @@ const HomeScreen = ({ navigation, games, addGame, deleteGame }) => {
             ]}
             onPress={handleSettings}
           >
-            <Text style={styles.settingsButtonText}>⚙️ Settings</Text>
+            <Text style={styles.settingsButtonText}>⚙️ SETTINGS</Text>
           </Pressable>
         </View>
       </View>
@@ -97,13 +95,13 @@ const HomeScreen = ({ navigation, games, addGame, deleteGame }) => {
         {games.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateIcon}>🎯</Text>
-            <Text style={styles.emptyStateTitle}>No Games Yet</Text>
+            <Text style={styles.emptyStateTitle}>NO GAMES YET</Text>
             <Text style={styles.emptyStateMessage}>
-              Start building your gaming library by adding your first game!
+              START BUILDING YOUR GAMING LIBRARY!
             </Text>
             <Pressable style={styles.emptyStateButton} onPress={handleAddGame}>
               <Text style={styles.emptyStateButtonText}>
-                Add Your First Game
+                ADD YOUR FIRST GAME
               </Text>
             </Pressable>
           </View>
@@ -117,11 +115,13 @@ const HomeScreen = ({ navigation, games, addGame, deleteGame }) => {
               ]}
               onPress={() => handleGameSelect(game.id, game.title)}
             >
-              {/* Game Title - Now at the top! */}
+              {/* Game Title with Border - Now at the top! */}
               <View style={styles.gameTitleContainer}>
-                <Text style={styles.gameTitle} numberOfLines={2}>
-                  {game.title}
-                </Text>
+                <View style={styles.gameTitleBorder}>
+                  <Text style={styles.gameTitle} numberOfLines={2}>
+                    {game.title.toUpperCase()}
+                  </Text>
+                </View>
                 <View style={styles.gameActions}>
                   <Pressable
                     style={({ pressed }) => [
@@ -158,12 +158,10 @@ const HomeScreen = ({ navigation, games, addGame, deleteGame }) => {
                   </Text>
                 </View>
                 <View style={styles.gameInfo}>
-                  <Text style={styles.lastEntry}>
-                    Last entry: {game.lastEntry}
-                  </Text>
+                  <Text style={styles.lastEntry}>LAST: {game.lastEntry}</Text>
                   <Text style={styles.entryCount}>
                     {game.entries.length}{" "}
-                    {game.entries.length === 1 ? "entry" : "entries"}
+                    {game.entries.length === 1 ? "ENTRY" : "ENTRIES"}
                   </Text>
                 </View>
               </View>
@@ -181,8 +179,10 @@ const HomeScreen = ({ navigation, games, addGame, deleteGame }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{modalTitle}</Text>
-            <Text style={styles.modalMessage}>{modalMessage}</Text>
+            <Text style={styles.modalTitle}>{modalTitle.toUpperCase()}</Text>
+            <Text style={styles.modalMessage}>
+              {modalMessage.toUpperCase()}
+            </Text>
             <Pressable
               style={styles.modalButton}
               onPress={() => setModalVisible(false)}
@@ -203,26 +203,23 @@ const HomeScreen = ({ navigation, games, addGame, deleteGame }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.deleteModalIcon}>⚠️</Text>
-            <Text style={styles.modalTitle}>Delete Game</Text>
+            <Text style={styles.modalTitle}>DELETE GAME</Text>
             <Text style={styles.modalMessage}>
-              Are you sure you want to delete "{gameToDelete?.title}" and all
-              its entries?
+              DELETE "{gameToDelete?.title.toUpperCase()}" AND ALL ENTRIES?
             </Text>
-            <Text style={styles.deleteWarning}>
-              This action cannot be undone.
-            </Text>
+            <Text style={styles.deleteWarning}>THIS CANNOT BE UNDONE!</Text>
             <View style={styles.modalButtons}>
               <Pressable
                 style={styles.modalCancelButton}
                 onPress={() => setShowDeleteConfirm(false)}
               >
-                <Text style={styles.modalButtonText}>Cancel</Text>
+                <Text style={styles.modalButtonText}>CANCEL</Text>
               </Pressable>
               <Pressable
                 style={styles.modalDeleteButton}
                 onPress={confirmDelete}
               >
-                <Text style={styles.modalButtonText}>Delete</Text>
+                <Text style={styles.modalButtonText}>DELETE</Text>
               </Pressable>
             </View>
           </View>
@@ -242,54 +239,57 @@ const getStyles = (theme, getTextSize) =>
     header: {
       padding: 20,
       backgroundColor: theme.headerBackground,
-      borderBottomWidth: 1,
+      borderBottomWidth: 2,
       borderBottomColor: theme.borderColor,
     },
     welcome: {
-      fontSize: getTextSize(26),
-      fontWeight: "bold",
-      marginBottom: 8,
+      fontSize: getTextSize(22),
+      fontWeight: "400",
+      marginBottom: 12,
       color: theme.text,
-      fontFamily: "monospace", // Gaming-style font
+      fontFamily: "monospace", // Will be Press Start 2P when loaded
+      textAlign: "center",
     },
     quote: {
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(12),
       color: theme.secondaryText,
       marginBottom: 20,
-      fontStyle: "italic",
       fontFamily: "monospace",
+      textAlign: "center",
+      lineHeight: 18,
     },
     headerButtons: {
       flexDirection: "row",
-      justifyContent: "flex-end",
+      justifyContent: "space-around",
       gap: 10,
     },
     addButton: {
       backgroundColor: theme.buttonPrimary,
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       paddingVertical: 12,
-      borderRadius: 8,
-      flexDirection: "row",
-      alignItems: "center",
+      borderRadius: 6,
+      flex: 1,
+      marginRight: 5,
     },
     addButtonText: {
-      color: theme.isDark ? theme.background : "#ffffff",
-      fontSize: getTextSize(16),
-      fontWeight: "bold",
+      color: theme.isDark ? theme.text : "#ffffff",
+      fontSize: getTextSize(12),
       fontFamily: "monospace",
+      textAlign: "center",
     },
     settingsButton: {
       backgroundColor: theme.buttonSecondary,
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       paddingVertical: 12,
-      borderRadius: 8,
-      flexDirection: "row",
-      alignItems: "center",
+      borderRadius: 6,
+      flex: 1,
+      marginLeft: 5,
     },
     settingsButtonText: {
       color: "#ffffff",
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(12),
       fontFamily: "monospace",
+      textAlign: "center",
     },
     buttonPressed: {
       opacity: 0.7,
@@ -309,30 +309,30 @@ const getStyles = (theme, getTextSize) =>
       marginBottom: 20,
     },
     emptyStateTitle: {
-      fontSize: getTextSize(24),
-      fontWeight: "bold",
-      color: theme.text,
-      marginBottom: 10,
+      fontSize: getTextSize(20),
       fontFamily: "monospace",
+      color: theme.text,
+      marginBottom: 15,
+      textAlign: "center",
     },
     emptyStateMessage: {
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(12),
       color: theme.secondaryText,
       textAlign: "center",
       marginBottom: 30,
       paddingHorizontal: 20,
       fontFamily: "monospace",
+      lineHeight: 18,
     },
     emptyStateButton: {
       backgroundColor: theme.buttonPrimary,
       paddingHorizontal: 25,
       paddingVertical: 15,
-      borderRadius: 8,
+      borderRadius: 6,
     },
     emptyStateButtonText: {
-      color: theme.isDark ? theme.background : "#ffffff",
-      fontSize: getTextSize(16),
-      fontWeight: "bold",
+      color: theme.isDark ? theme.text : "#ffffff",
+      fontSize: getTextSize(12),
       fontFamily: "monospace",
     },
     gameCard: {
@@ -341,32 +341,42 @@ const getStyles = (theme, getTextSize) =>
       marginBottom: 15,
       borderRadius: 12,
       shadowColor: theme.shadowColor,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
-      borderWidth: 1,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 4,
+      borderWidth: 2,
       borderColor: theme.borderColor,
     },
     cardPressed: {
-      backgroundColor: theme.isDark ? "#3a3a3a" : "#f8f8f8",
+      backgroundColor: theme.isDark ? "#2a3f3b" : "#f0f6f5",
       transform: [{ scale: 0.98 }],
     },
-    // NEW LAYOUT: Title at top with actions
+    // NEW: Title container with border
     gameTitleContainer: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-start",
-      marginBottom: 12,
+      marginBottom: 15,
+    },
+    gameTitleBorder: {
+      flex: 1,
+      borderWidth: 2,
+      borderColor: theme.borderColor,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      marginRight: 15,
+      backgroundColor: theme.isDark
+        ? "rgba(163, 212, 208, 0.1)"
+        : "rgba(74, 155, 150, 0.1)", // Subtle seafoam background
     },
     gameTitle: {
-      flex: 1,
-      fontSize: getTextSize(19),
-      fontWeight: "bold",
+      fontSize: getTextSize(14),
       color: theme.text,
-      marginRight: 15,
-      fontFamily: "monospace", // Gaming font!
-      letterSpacing: 0.5, // Slightly spaced for retro feel
+      fontFamily: "monospace",
+      lineHeight: 20,
+      textAlign: "center",
     },
     gameActions: {
       flexDirection: "row",
@@ -380,11 +390,13 @@ const getStyles = (theme, getTextSize) =>
     gameImage: {
       width: 60,
       height: 60,
-      backgroundColor: theme.isDark ? "#404040" : "#e0e0e0",
-      borderRadius: 12,
+      backgroundColor: theme.isDark ? "#2a3a36" : "#e8f4f0",
+      borderRadius: 10,
       justifyContent: "center",
       alignItems: "center",
       marginRight: 15,
+      borderWidth: 2,
+      borderColor: theme.borderColor,
     },
     imagePlaceholder: {
       fontSize: getTextSize(28),
@@ -393,21 +405,19 @@ const getStyles = (theme, getTextSize) =>
       flex: 1,
     },
     lastEntry: {
-      fontSize: getTextSize(14),
+      fontSize: getTextSize(11),
       color: theme.secondaryText,
-      marginBottom: 4,
+      marginBottom: 6,
       fontFamily: "monospace",
     },
     entryCount: {
-      fontSize: getTextSize(13),
+      fontSize: getTextSize(10),
       color: theme.secondaryText,
-      opacity: 0.8,
       fontFamily: "monospace",
-      fontWeight: "600",
     },
     actionButton: {
       backgroundColor: theme.buttonSuccess,
-      paddingHorizontal: 12,
+      paddingHorizontal: 10,
       paddingVertical: 8,
       borderRadius: 6,
     },
@@ -416,7 +426,7 @@ const getStyles = (theme, getTextSize) =>
     },
     deleteButton: {
       backgroundColor: theme.buttonDanger,
-      paddingHorizontal: 12,
+      paddingHorizontal: 10,
       paddingVertical: 8,
       borderRadius: 6,
     },
@@ -424,7 +434,7 @@ const getStyles = (theme, getTextSize) =>
       fontSize: getTextSize(16),
     },
     deleteButtonPressed: {
-      backgroundColor: "#FF6B6B",
+      backgroundColor: "#e67e7b",
     },
     // Modal styles
     modalOverlay: {
@@ -441,44 +451,44 @@ const getStyles = (theme, getTextSize) =>
       minWidth: 300,
       maxWidth: 400,
       alignItems: "center",
+      borderWidth: 2,
+      borderColor: theme.borderColor,
     },
     deleteModalIcon: {
       fontSize: getTextSize(48),
       marginBottom: 15,
     },
     modalTitle: {
-      fontSize: getTextSize(20),
-      fontWeight: "bold",
-      marginBottom: 10,
+      fontSize: getTextSize(16),
+      marginBottom: 15,
       color: theme.text,
       fontFamily: "monospace",
+      textAlign: "center",
     },
     modalMessage: {
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(12),
       textAlign: "center",
       marginBottom: 20,
       color: theme.secondaryText,
-      lineHeight: 22,
+      lineHeight: 18,
       fontFamily: "monospace",
     },
     deleteWarning: {
-      fontSize: getTextSize(14),
+      fontSize: getTextSize(11),
       textAlign: "center",
       color: theme.buttonDanger,
       marginBottom: 25,
-      fontWeight: "600",
       fontFamily: "monospace",
     },
     modalButton: {
       backgroundColor: theme.buttonPrimary,
       paddingHorizontal: 30,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: 6,
     },
     modalButtonText: {
-      color: theme.isDark ? theme.background : "#ffffff",
-      fontSize: getTextSize(16),
-      fontWeight: "bold",
+      color: theme.isDark ? theme.text : "#ffffff",
+      fontSize: getTextSize(12),
       fontFamily: "monospace",
     },
     modalButtons: {
@@ -490,14 +500,14 @@ const getStyles = (theme, getTextSize) =>
       flex: 1,
       backgroundColor: theme.buttonSecondary,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: 6,
       alignItems: "center",
     },
     modalDeleteButton: {
       flex: 1,
       backgroundColor: theme.buttonDanger,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: 6,
       alignItems: "center",
     },
   });

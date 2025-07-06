@@ -10,7 +10,7 @@ import {
   Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useTheme } from "../../App";
+import { useTheme } from "../../ThemeContext"; // ONLY ONE IMPORT!
 
 const SettingsScreen = ({ navigation }) => {
   const { theme, settings, updateSettings, getTextSize } = useTheme();
@@ -24,8 +24,8 @@ const SettingsScreen = ({ navigation }) => {
   // Handle data export (future feature)
   const handleExportData = () => {
     Alert.alert(
-      "Export Data",
-      "Data export feature coming soon! This will allow you to backup your game notes.",
+      "EXPORT DATA",
+      "DATA EXPORT FEATURE COMING SOON! THIS WILL ALLOW YOU TO BACKUP YOUR GAME NOTES.",
       [{ text: "OK" }]
     );
   };
@@ -33,8 +33,8 @@ const SettingsScreen = ({ navigation }) => {
   // Handle data import (future feature)
   const handleImportData = () => {
     Alert.alert(
-      "Import Data",
-      "Data import feature coming soon! This will allow you to restore your game notes from a backup.",
+      "IMPORT DATA",
+      "DATA IMPORT FEATURE COMING SOON! THIS WILL ALLOW YOU TO RESTORE YOUR GAME NOTES FROM A BACKUP.",
       [{ text: "OK" }]
     );
   };
@@ -42,21 +42,21 @@ const SettingsScreen = ({ navigation }) => {
   // Clear all data
   const handleClearAllData = () => {
     Alert.alert(
-      "Clear All Data",
-      "Are you sure you want to delete ALL games and notes? This cannot be undone!",
+      "CLEAR ALL DATA",
+      "ARE YOU SURE YOU WANT TO DELETE ALL GAMES AND NOTES? THIS CANNOT BE UNDONE!",
       [
-        { text: "Cancel", style: "cancel" },
+        { text: "CANCEL", style: "cancel" },
         {
-          text: "Delete All",
+          text: "DELETE ALL",
           style: "destructive",
           onPress: async () => {
             try {
               await AsyncStorage.removeItem("@gamepad_notes_games");
-              Alert.alert("Success", "All data has been cleared.", [
+              Alert.alert("SUCCESS", "ALL DATA HAS BEEN CLEARED.", [
                 { text: "OK", onPress: () => navigation.goBack() },
               ]);
             } catch (error) {
-              Alert.alert("Error", "Failed to clear data.");
+              Alert.alert("ERROR", "FAILED TO CLEAR DATA.");
             }
           },
         },
@@ -74,22 +74,22 @@ const SettingsScreen = ({ navigation }) => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>← BACK</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={styles.headerTitle}>SETTINGS</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Appearance Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🎨 Appearance</Text>
+          <Text style={styles.sectionTitle}>🎨 APPEARANCE</Text>
 
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Dark Mode</Text>
+              <Text style={styles.settingLabel}>DARK MODE</Text>
               <Text style={styles.settingDescription}>
-                Switch between light and dark themes
+                SWITCH BETWEEN LIGHT AND DARK THEMES
               </Text>
             </View>
             <Switch
@@ -102,9 +102,9 @@ const SettingsScreen = ({ navigation }) => {
 
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Text Size</Text>
+              <Text style={styles.settingLabel}>TEXT SIZE</Text>
               <Text style={styles.settingDescription}>
-                Adjust text size for better readability
+                ADJUST TEXT SIZE FOR BETTER READABILITY
               </Text>
             </View>
           </View>
@@ -126,7 +126,7 @@ const SettingsScreen = ({ navigation }) => {
                       styles.textSizeButtonTextSelected,
                   ]}
                 >
-                  {size.charAt(0).toUpperCase() + size.slice(1)}
+                  {size.toUpperCase()}
                 </Text>
               </Pressable>
             ))}
@@ -135,13 +135,13 @@ const SettingsScreen = ({ navigation }) => {
 
         {/* Behavior Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⚙️ Behavior</Text>
+          <Text style={styles.sectionTitle}>⚙️ BEHAVIOR</Text>
 
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Confirm Deletes</Text>
+              <Text style={styles.settingLabel}>CONFIRM DELETES</Text>
               <Text style={styles.settingDescription}>
-                Show confirmation before deleting items
+                SHOW CONFIRMATION BEFORE DELETING ITEMS
               </Text>
             </View>
             <Switch
@@ -156,9 +156,9 @@ const SettingsScreen = ({ navigation }) => {
 
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Auto Save</Text>
+              <Text style={styles.settingLabel}>AUTO SAVE</Text>
               <Text style={styles.settingDescription}>
-                Automatically save changes as you type
+                AUTOMATICALLY SAVE CHANGES AS YOU TYPE
               </Text>
             </View>
             <Switch
@@ -172,16 +172,16 @@ const SettingsScreen = ({ navigation }) => {
 
         {/* Data Management Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>💾 Data Management</Text>
+          <Text style={styles.sectionTitle}>💾 DATA MANAGEMENT</Text>
 
           <Pressable style={styles.actionButton} onPress={handleExportData}>
-            <Text style={styles.actionButtonText}>📤 Export Data</Text>
-            <Text style={styles.actionButtonSubtext}>Backup your notes</Text>
+            <Text style={styles.actionButtonText}>📤 EXPORT DATA</Text>
+            <Text style={styles.actionButtonSubtext}>BACKUP YOUR NOTES</Text>
           </Pressable>
 
           <Pressable style={styles.actionButton} onPress={handleImportData}>
-            <Text style={styles.actionButtonText}>📥 Import Data</Text>
-            <Text style={styles.actionButtonSubtext}>Restore from backup</Text>
+            <Text style={styles.actionButtonText}>📥 IMPORT DATA</Text>
+            <Text style={styles.actionButtonSubtext}>RESTORE FROM BACKUP</Text>
           </Pressable>
 
           <Pressable
@@ -189,25 +189,25 @@ const SettingsScreen = ({ navigation }) => {
             onPress={handleClearAllData}
           >
             <Text style={[styles.actionButtonText, styles.dangerButtonText]}>
-              🗑️ Clear All Data
+              🗑️ CLEAR ALL DATA
             </Text>
             <Text style={[styles.actionButtonSubtext, styles.dangerButtonText]}>
-              Delete all games and notes
+              DELETE ALL GAMES AND NOTES
             </Text>
           </Pressable>
         </View>
 
         {/* About Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ℹ️ About</Text>
+          <Text style={styles.sectionTitle}>ℹ️ ABOUT</Text>
 
           <Pressable
             style={styles.actionButton}
             onPress={() => setShowAbout(true)}
           >
-            <Text style={styles.actionButtonText}>📱 About GamePad Notes</Text>
+            <Text style={styles.actionButtonText}>📱 ABOUT GAMEPAD NOTES</Text>
             <Text style={styles.actionButtonSubtext}>
-              Version info and credits
+              VERSION INFO AND CREDITS
             </Text>
           </Pressable>
         </View>
@@ -222,38 +222,38 @@ const SettingsScreen = ({ navigation }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.aboutModal}>
-            <Text style={styles.aboutTitle}>🎮 GamePad Notes</Text>
-            <Text style={styles.aboutVersion}>Version 1.0.0</Text>
+            <Text style={styles.aboutTitle}>🎮 GAMEPAD NOTES</Text>
+            <Text style={styles.aboutVersion}>VERSION 1.0.0</Text>
 
             <Text style={styles.aboutDescription}>
-              A mobile notepad app designed specifically for video game notes.
-              Keep track of your gaming progress, strategies, and memorable
-              moments.
+              A MOBILE NOTEPAD APP DESIGNED SPECIFICALLY FOR VIDEO GAME NOTES.
+              KEEP TRACK OF YOUR GAMING PROGRESS, STRATEGIES, AND MEMORABLE
+              MOMENTS.
             </Text>
 
             <View style={styles.aboutFeatures}>
-              <Text style={styles.aboutFeaturesTitle}>Features:</Text>
+              <Text style={styles.aboutFeaturesTitle}>FEATURES:</Text>
               <Text style={styles.aboutFeature}>
-                🎯 Game library management
+                🎯 GAME LIBRARY MANAGEMENT
               </Text>
-              <Text style={styles.aboutFeature}>📝 Daily gaming entries</Text>
-              <Text style={styles.aboutFeature}>🎨 Custom game icons</Text>
-              <Text style={styles.aboutFeature}>💾 Data persistence</Text>
+              <Text style={styles.aboutFeature}>📝 DAILY GAMING ENTRIES</Text>
+              <Text style={styles.aboutFeature}>🎨 CUSTOM GAME ICONS</Text>
+              <Text style={styles.aboutFeature}>💾 DATA PERSISTENCE</Text>
               <Text style={styles.aboutFeature}>
-                📱 Touch-optimized interface
+                📱 TOUCH-OPTIMIZED INTERFACE
               </Text>
-              <Text style={styles.aboutFeature}>🌙 Dark mode support</Text>
+              <Text style={styles.aboutFeature}>🌙 DARK MODE SUPPORT</Text>
             </View>
 
             <Text style={styles.aboutCredit}>
-              Created with ❤️ by Davon Henson
+              CREATED WITH ❤️ BY DAVON HENSON
             </Text>
 
             <Pressable
               style={styles.aboutCloseButton}
               onPress={() => setShowAbout(false)}
             >
-              <Text style={styles.aboutCloseButtonText}>Close</Text>
+              <Text style={styles.aboutCloseButtonText}>CLOSE</Text>
             </Pressable>
           </View>
         </View>
@@ -277,23 +277,24 @@ const getStyles = (theme, getTextSize) =>
       paddingTop: 50,
       paddingHorizontal: 20,
       paddingBottom: 15,
-      borderBottomWidth: 1,
+      borderBottomWidth: 2,
       borderBottomColor: theme.borderColor,
     },
     backButton: {
       backgroundColor: theme.buttonSecondary,
       paddingHorizontal: 15,
       paddingVertical: 8,
-      borderRadius: 6,
+      borderRadius: 4,
     },
     backButtonText: {
       color: "white",
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(12),
+      fontFamily: "monospace",
     },
     headerTitle: {
-      fontSize: getTextSize(22),
-      fontWeight: "bold",
+      fontSize: getTextSize(16),
       color: theme.text,
+      fontFamily: "monospace",
     },
     placeholder: {
       width: 80,
@@ -306,10 +307,10 @@ const getStyles = (theme, getTextSize) =>
       marginBottom: 30,
     },
     sectionTitle: {
-      fontSize: getTextSize(20),
-      fontWeight: "bold",
+      fontSize: getTextSize(14),
       marginBottom: 15,
       color: theme.text,
+      fontFamily: "monospace",
     },
     settingItem: {
       flexDirection: "row",
@@ -317,9 +318,9 @@ const getStyles = (theme, getTextSize) =>
       alignItems: "center",
       backgroundColor: theme.cardBackground,
       padding: 15,
-      borderRadius: 12,
+      borderRadius: 8,
       marginBottom: 12,
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: theme.borderColor,
     },
     settingInfo: {
@@ -327,15 +328,16 @@ const getStyles = (theme, getTextSize) =>
       marginRight: 15,
     },
     settingLabel: {
-      fontSize: getTextSize(16),
-      fontWeight: "600",
+      fontSize: getTextSize(12),
       color: theme.text,
       marginBottom: 4,
+      fontFamily: "monospace",
     },
     settingDescription: {
-      fontSize: getTextSize(14),
+      fontSize: getTextSize(10),
       color: theme.secondaryText,
-      lineHeight: 18,
+      lineHeight: 14,
+      fontFamily: "monospace",
     },
     textSizeOptions: {
       flexDirection: "row",
@@ -347,7 +349,7 @@ const getStyles = (theme, getTextSize) =>
       backgroundColor: theme.cardBackground,
       borderWidth: 2,
       borderColor: theme.borderColor,
-      borderRadius: 8,
+      borderRadius: 4,
       paddingVertical: 12,
       alignItems: "center",
     },
@@ -356,30 +358,31 @@ const getStyles = (theme, getTextSize) =>
       backgroundColor: theme.isDark ? "#0A3A2A" : "#E8F5E8",
     },
     textSizeButtonText: {
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(12),
       color: theme.secondaryText,
+      fontFamily: "monospace",
     },
     textSizeButtonTextSelected: {
       color: theme.text,
-      fontWeight: "600",
     },
     actionButton: {
       backgroundColor: theme.cardBackground,
       padding: 18,
-      borderRadius: 12,
+      borderRadius: 8,
       marginBottom: 12,
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: theme.borderColor,
     },
     actionButtonText: {
-      fontSize: getTextSize(16),
-      fontWeight: "600",
+      fontSize: getTextSize(12),
       color: theme.text,
       marginBottom: 4,
+      fontFamily: "monospace",
     },
     actionButtonSubtext: {
-      fontSize: getTextSize(14),
+      fontSize: getTextSize(10),
       color: theme.secondaryText,
+      fontFamily: "monospace",
     },
     dangerButton: {
       borderColor: theme.buttonDanger,
@@ -399,62 +402,67 @@ const getStyles = (theme, getTextSize) =>
     aboutModal: {
       backgroundColor: theme.cardBackground,
       padding: 25,
-      borderRadius: 12,
+      borderRadius: 8,
       maxWidth: 400,
       width: "100%",
+      borderWidth: 2,
+      borderColor: theme.borderColor,
     },
     aboutTitle: {
-      fontSize: getTextSize(24),
-      fontWeight: "bold",
+      fontSize: getTextSize(18),
       textAlign: "center",
       color: theme.text,
       marginBottom: 5,
+      fontFamily: "monospace",
     },
     aboutVersion: {
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(12),
       textAlign: "center",
       color: theme.secondaryText,
       marginBottom: 20,
+      fontFamily: "monospace",
     },
     aboutDescription: {
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(11),
       color: theme.text,
-      lineHeight: 22,
+      lineHeight: 16,
       marginBottom: 20,
       textAlign: "center",
+      fontFamily: "monospace",
     },
     aboutFeatures: {
       marginBottom: 20,
     },
     aboutFeaturesTitle: {
-      fontSize: getTextSize(16),
-      fontWeight: "600",
+      fontSize: getTextSize(12),
       color: theme.text,
       marginBottom: 10,
+      fontFamily: "monospace",
     },
     aboutFeature: {
-      fontSize: getTextSize(15),
+      fontSize: getTextSize(10),
       color: theme.secondaryText,
       marginBottom: 6,
-      lineHeight: 20,
+      lineHeight: 14,
+      fontFamily: "monospace",
     },
     aboutCredit: {
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(11),
       textAlign: "center",
       color: theme.secondaryText,
-      fontStyle: "italic",
       marginBottom: 25,
+      fontFamily: "monospace",
     },
     aboutCloseButton: {
       backgroundColor: theme.buttonPrimary,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: 4,
       alignItems: "center",
     },
     aboutCloseButtonText: {
       color: theme.isDark ? theme.background : "white",
-      fontSize: getTextSize(16),
-      fontWeight: "bold",
+      fontSize: getTextSize(12),
+      fontFamily: "monospace",
     },
   });
 

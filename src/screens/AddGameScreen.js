@@ -8,7 +8,7 @@ import {
   ScrollView,
   Modal,
 } from "react-native";
-import { useTheme } from "../../App";
+import { useTheme } from "../../ThemeContext"; // ONLY ONE IMPORT!
 
 const AddGameScreen = ({ navigation, addGame }) => {
   const { theme, getTextSize } = useTheme();
@@ -55,19 +55,19 @@ const AddGameScreen = ({ navigation, addGame }) => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backButtonText}>← Cancel</Text>
+          <Text style={styles.backButtonText}>← CANCEL</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Add New Game</Text>
+        <Text style={styles.headerTitle}>ADD NEW GAME</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Game Title Input */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🎮 Game Title</Text>
+          <Text style={styles.sectionTitle}>🎮 GAME TITLE</Text>
           <TextInput
             style={styles.textInput}
-            placeholder="Enter game title..."
+            placeholder="ENTER GAME TITLE..."
             placeholderTextColor={theme.placeholderText}
             value={gameTitle}
             onChangeText={setGameTitle}
@@ -77,7 +77,7 @@ const AddGameScreen = ({ navigation, addGame }) => {
 
         {/* Image Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🎨 Choose Game Icon</Text>
+          <Text style={styles.sectionTitle}>🎨 CHOOSE GAME ICON</Text>
           <View style={styles.imageGrid}>
             {imageOptions.map((option) => (
               <Pressable
@@ -89,7 +89,9 @@ const AddGameScreen = ({ navigation, addGame }) => {
                 onPress={() => setSelectedImage(option.id)}
               >
                 <Text style={styles.imageEmoji}>{option.emoji}</Text>
-                <Text style={styles.imageLabel}>{option.name}</Text>
+                <Text style={styles.imageLabel}>
+                  {option.name.toUpperCase()}
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -99,7 +101,7 @@ const AddGameScreen = ({ navigation, addGame }) => {
         <View style={styles.section}>
           <Pressable style={styles.customImageButton}>
             <Text style={styles.customImageText}>
-              📷 Add Custom Image (Coming Soon)
+              📷 ADD CUSTOM IMAGE (COMING SOON)
             </Text>
           </Pressable>
         </View>
@@ -115,7 +117,7 @@ const AddGameScreen = ({ navigation, addGame }) => {
           onPress={handleAddGame}
           disabled={!gameTitle.trim()}
         >
-          <Text style={styles.addButtonText}>🚀 Add Game</Text>
+          <Text style={styles.addButtonText}>🚀 ADD GAME</Text>
         </Pressable>
       </View>
 
@@ -129,15 +131,15 @@ const AddGameScreen = ({ navigation, addGame }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.successModal}>
             <Text style={styles.successEmoji}>🎉</Text>
-            <Text style={styles.successTitle}>Game Added!</Text>
+            <Text style={styles.successTitle}>GAME ADDED!</Text>
             <Text style={styles.successMessage}>
-              "{gameTitle}" has been added to your game library.
+              "{gameTitle.toUpperCase()}" HAS BEEN ADDED TO YOUR LIBRARY.
             </Text>
             <Pressable
               style={styles.successButton}
               onPress={handleSuccessClose}
             >
-              <Text style={styles.successButtonText}>Continue</Text>
+              <Text style={styles.successButtonText}>CONTINUE</Text>
             </Pressable>
           </View>
         </View>
@@ -160,23 +162,24 @@ const getStyles = (theme, getTextSize) =>
       paddingTop: 50,
       paddingHorizontal: 20,
       paddingBottom: 15,
-      borderBottomWidth: 1,
+      borderBottomWidth: 2,
       borderBottomColor: theme.borderColor,
     },
     backButton: {
       backgroundColor: theme.buttonSecondary,
       paddingHorizontal: 15,
       paddingVertical: 8,
-      borderRadius: 6,
+      borderRadius: 4,
     },
     backButtonText: {
       color: "white",
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(12),
+      fontFamily: "monospace",
     },
     headerTitle: {
-      fontSize: getTextSize(20),
-      fontWeight: "bold",
+      fontSize: getTextSize(14),
       color: theme.text,
+      fontFamily: "monospace",
     },
     placeholder: {
       width: 80,
@@ -190,19 +193,20 @@ const getStyles = (theme, getTextSize) =>
       marginBottom: 30,
     },
     sectionTitle: {
-      fontSize: getTextSize(18),
-      fontWeight: "bold",
+      fontSize: getTextSize(14),
       marginBottom: 15,
       color: theme.text,
+      fontFamily: "monospace",
     },
     textInput: {
       backgroundColor: theme.cardBackground,
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: theme.borderColor,
-      borderRadius: 8,
+      borderRadius: 4,
       padding: 15,
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(14),
       color: theme.text,
+      fontFamily: "monospace",
     },
     imageGrid: {
       flexDirection: "row",
@@ -213,7 +217,7 @@ const getStyles = (theme, getTextSize) =>
       backgroundColor: theme.cardBackground,
       borderWidth: 2,
       borderColor: theme.borderColor,
-      borderRadius: 12,
+      borderRadius: 8,
       padding: 15,
       alignItems: "center",
       width: "48%",
@@ -221,40 +225,42 @@ const getStyles = (theme, getTextSize) =>
     },
     imageOptionSelected: {
       borderColor: theme.buttonSuccess,
-      backgroundColor: theme.isDark ? "#0A3A2A" : "#E8F5E8", // Fixed: removed undefined theme.accentBackground
+      backgroundColor: theme.isDark ? "#0A3A2A" : "#E8F5E8",
     },
     imageEmoji: {
       fontSize: getTextSize(30),
       marginBottom: 8,
     },
     imageLabel: {
-      fontSize: getTextSize(12),
+      fontSize: getTextSize(10),
       textAlign: "center",
       color: theme.secondaryText,
+      fontFamily: "monospace",
     },
     customImageButton: {
       backgroundColor: theme.cardBackground,
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: theme.borderColor,
       borderStyle: "dashed",
-      borderRadius: 8,
+      borderRadius: 4,
       padding: 20,
       alignItems: "center",
     },
     customImageText: {
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(12),
       color: theme.secondaryText,
+      fontFamily: "monospace",
     },
     bottomSection: {
       backgroundColor: theme.headerBackground,
       padding: 20,
-      borderTopWidth: 1,
+      borderTopWidth: 2,
       borderTopColor: theme.borderColor,
     },
     addButton: {
       backgroundColor: theme.buttonPrimary,
       paddingVertical: 15,
-      borderRadius: 8,
+      borderRadius: 4,
       alignItems: "center",
     },
     addButtonDisabled: {
@@ -262,8 +268,8 @@ const getStyles = (theme, getTextSize) =>
     },
     addButtonText: {
       color: theme.isDark ? theme.background : "white",
-      fontSize: getTextSize(18),
-      fontWeight: "bold",
+      fontSize: getTextSize(14),
+      fontFamily: "monospace",
     },
     // Modal styles
     modalOverlay: {
@@ -276,36 +282,40 @@ const getStyles = (theme, getTextSize) =>
     successModal: {
       backgroundColor: theme.cardBackground,
       padding: 30,
-      borderRadius: 12,
+      borderRadius: 8,
       alignItems: "center",
       minWidth: 300,
+      borderWidth: 2,
+      borderColor: theme.borderColor,
     },
     successEmoji: {
       fontSize: getTextSize(50),
       marginBottom: 15,
     },
     successTitle: {
-      fontSize: getTextSize(22),
-      fontWeight: "bold",
+      fontSize: getTextSize(16),
       marginBottom: 10,
       color: theme.text,
+      fontFamily: "monospace",
     },
     successMessage: {
-      fontSize: getTextSize(16),
+      fontSize: getTextSize(12),
       textAlign: "center",
       color: theme.secondaryText,
       marginBottom: 25,
+      fontFamily: "monospace",
+      lineHeight: 18,
     },
     successButton: {
       backgroundColor: theme.buttonPrimary,
       paddingHorizontal: 30,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: 4,
     },
     successButtonText: {
       color: theme.isDark ? theme.background : "white",
-      fontSize: getTextSize(16),
-      fontWeight: "bold",
+      fontSize: getTextSize(12),
+      fontFamily: "monospace",
     },
   });
 

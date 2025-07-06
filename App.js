@@ -1,7 +1,10 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ThemeProvider } from "./ThemeContext";
+
+// Import screens
 import HomeScreen from "./src/screens/HomeScreen";
 import GameDetailScreen from "./src/screens/GameDetailScreen";
 import AddGameScreen from "./src/screens/AddGameScreen";
@@ -9,249 +12,102 @@ import SettingsScreen from "./src/screens/SettingsScreen";
 
 const Stack = createStackNavigator();
 
-// Theme Context
-const ThemeContext = createContext();
+// Storage key for games data
+const STORAGE_KEY = "@gamepad_notes_games";
 
-// Custom hook to use theme
-export const useTheme = () => {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error("useTheme must be used within a ThemeProvider");
-  }
-  return context;
+// Default data structure
+const defaultData = [];
+
+// Helper function to get today's date in local timezone
+const getTodaysDate = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
-// 🌊 SEAGREEN LIGHT THEME - No Pink!
-export const lightTheme = {
-  background: "#E0F2F1",
-  cardBackground: "#FFFFFF",
-  headerBackground: "#B2DFDB",
-  text: "#004D40",
-  secondaryText: "#00695C",
-  primary: "#00BCD4",
-  accent: "#4DD0E1",
-  accentBackground: "#E0F7FA",
-  borderColor: "#80CBC4",
-  buttonPrimary: "#00ACC1",
-  buttonSecondary: "#26A69A",
-  buttonDanger: "#FF5722", // Deep orange instead of pink
-  buttonSuccess: "#66BB6A",
-  modalOverlay: "rgba(0, 77, 64, 0.7)",
-  placeholderText: "#4DB6AC",
-  inputBackground: "#F1F8E9",
-  shadowColor: "#004D40",
-  neonGlow: "#00E5FF",
-  neonOrange: "#FF6D00", // Orange accent
-  neonGreen: "#69F0AE",
-  isDark: false,
-};
+const App = () => {
+  const [games, setGames] = useState(defaultData);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-// 🌃 NEON DARK THEME - Orange instead of Pink
-export const darkTheme = {
-  background: "#0A0A0A",
-  cardBackground: "#1A1A1A",
-  headerBackground: "#1E1E1E",
-  text: "#E0F2F1",
-  secondaryText: "#80CBC4",
-  primary: "#00E5FF",
-  accent: "#1DE9B6",
-  accentBackground: "#003D40",
-  borderColor: "#004D40",
-  buttonPrimary: "#00E5FF",
-  buttonSecondary: "#1DE9B6",
-  buttonDanger: "#FF6D00", // Electric orange
-  buttonSuccess: "#69F0AE",
-  modalOverlay: "rgba(0, 0, 0, 0.9)",
-  placeholderText: "#4DB6AC",
-  inputBackground: "#2A2A2A",
-  shadowColor: "#00E5FF",
-  neonGlow: "#00E5FF",
-  neonOrange: "#FF6D00",
-  neonGreen: "#69F0AE",
-  isDark: true,
-};
-
-// Theme Provider Component
-const ThemeProvider = ({ children }) => {
-  const [settings, setSettings] = useState({
-    darkMode: false,
-    textSize: "medium",
-    showConfirmDeletes: true,
-    autoSave: true,
-  });
-  const [isLoading, setIsLoading] = useState(true);
-
-  const SETTINGS_KEY = "@gamepad_notes_settings";
-
+  // Load data from AsyncStorage on app start
   useEffect(() => {
-    loadSettings();
+    loadData();
   }, []);
 
+  // Save data to AsyncStorage whenever games change
   useEffect(() => {
-    if (!isLoading) {
-      saveSettings();
+    if (isLoaded) {
+      saveData();
     }
-  }, [settings, isLoading]);
+  }, [games, isLoaded]);
 
-  const loadSettings = async () => {
+  // Function to load data from storage
+  const loadData = async () => {
     try {
-      const savedSettings = await AsyncStorage.getItem(SETTINGS_KEY);
-      if (savedSettings) {
-        const parsedSettings = JSON.parse(savedSettings);
-        setSettings(parsedSettings);
+      const savedData = await AsyncStorage.getItem(STORAGE_KEY);
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        setGames(parsedData);
       }
     } catch (error) {
-      console.error("Error loading settings:", error);
+      console.error("Failed to load data:", error);
     } finally {
-      setIsLoading(false);
+      setIsLoaded(true);
     }
   };
 
-  const saveSettings = async () => {
-    try {
-      await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    } catch (error) {
-      console.error("Error saving settings:", error);
-    }
-  };
-
-  const updateSettings = (newSettings) => {
-    setSettings((prev) => ({ ...prev, ...newSettings }));
-  };
-
-  const theme = settings.darkMode ? darkTheme : lightTheme;
-
-  const textSizeMultipliers = {
-    small: 0.9,
-    medium: 1.0,
-    large: 1.15,
-  };
-
-  const getTextSize = (baseSize) => {
-    return Math.round(baseSize * textSizeMultipliers[settings.textSize]);
-  };
-
-  const themeValue = {
-    theme,
-    settings,
-    updateSettings,
-    getTextSize,
-    isLoading,
-  };
-
-  return (
-    <ThemeContext.Provider value={themeValue}>{children}</ThemeContext.Provider>
-  );
-};
-
-export default function App() {
-  const getTodaysDate = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  const defaultGames = [
-    {
-      id: 1,
-      title: "Cyberpunk 2077",
-      lastEntry: "2025-07-06",
-      image: { id: "shooter", name: "Action/Shooter", emoji: "🔫" },
-      entries: [
-        {
-          id: 1,
-          date: "2025-07-06",
-          text: "Night City looks incredible in the neon lights! Finally got the hang of the hacking mechanics. The atmosphere is pure retro-futurism. 🌃",
-          images: [],
-        },
-        {
-          id: 2,
-          date: "2025-07-05",
-          text: "Completed the first major quest. The branching dialogue system is amazing. Every choice feels meaningful in this neon-soaked world.",
-          images: [],
-        },
-      ],
-    },
-    {
-      id: 2,
-      title: "Stardew Valley",
-      lastEntry: "2025-07-04",
-      image: { id: "adventure", name: "Adventure", emoji: "🗺️" },
-      entries: [
-        {
-          id: 3,
-          date: "2025-07-04",
-          text: "Spring Year 2! My crops are thriving and I've got a chicken coop going. The pixel art style never gets old - so relaxing after long days. 🌱",
-          images: [],
-        },
-      ],
-    },
-  ];
-
-  const [games, setGames] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const STORAGE_KEY = "@gamepad_notes_games";
-
-  useEffect(() => {
-    loadGames();
-  }, []);
-
-  useEffect(() => {
-    if (!isLoading) {
-      saveGames();
-    }
-  }, [games, isLoading]);
-
-  const loadGames = async () => {
-    try {
-      const savedGames = await AsyncStorage.getItem(STORAGE_KEY);
-      if (savedGames !== null) {
-        const parsedGames = JSON.parse(savedGames);
-        setGames(parsedGames);
-      } else {
-        setGames(defaultGames);
-      }
-    } catch (error) {
-      console.error("Error loading games:", error);
-      setGames(defaultGames);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const saveGames = async () => {
+  // Function to save data to storage
+  const saveData = async () => {
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(games));
     } catch (error) {
-      console.error("Error saving games:", error);
+      console.error("Failed to save data:", error);
     }
   };
 
-  const addGame = (gameTitle, gameImage = null) => {
-    const newGame = {
-      id: Date.now(),
-      title: gameTitle,
-      lastEntry: getTodaysDate(),
-      image: gameImage,
-      entries: [],
-    };
-    setGames((prevGames) => [newGame, ...prevGames]);
-    return newGame.id;
+  // Function to get sorted games by last entry date (newest first)
+  const getSortedGames = () => {
+    return [...games].sort((a, b) => {
+      // Convert YYYY-MM-DD to Date for comparison
+      const dateA = new Date(a.lastEntry);
+      const dateB = new Date(b.lastEntry);
+      return dateB - dateA; // Newest first (descending order)
+    });
   };
 
+  // Function to add a new game
+  const addGame = (title, image = null) => {
+    const newGame = {
+      id: Date.now(),
+      title: title,
+      lastEntry: getTodaysDate(),
+      image: image,
+      entries: [],
+    };
+    setGames((prevGames) => [...prevGames, newGame]);
+  };
+
+  // Function to delete a game
   const deleteGame = (gameId) => {
     setGames((prevGames) => prevGames.filter((game) => game.id !== gameId));
   };
 
-  const addEntry = (gameId, entryText) => {
+  // Function to get a specific game
+  const getGame = (gameId) => {
+    return games.find((game) => game.id === gameId);
+  };
+
+  // Function to add an entry to a game
+  const addEntry = (gameId, text) => {
+    const today = getTodaysDate();
+    const newEntryId = Date.now();
     const newEntry = {
-      id: Date.now(),
-      date: getTodaysDate(),
-      text: entryText.trim(),
-      images: [],
+      id: newEntryId,
+      date: today,
+      text: text,
+      images: [], // Initialize empty images array
     };
 
     setGames((prevGames) =>
@@ -259,27 +115,27 @@ export default function App() {
         if (game.id === gameId) {
           return {
             ...game,
-            lastEntry: newEntry.date,
-            entries: [newEntry, ...game.entries],
+            lastEntry: today,
+            entries: [newEntry, ...game.entries], // Add to beginning (newest first)
           };
         }
         return game;
       })
     );
+
+    return newEntryId; // Return the new entry ID for photo attachment
   };
 
+  // Function to edit an entry
   const editEntry = (gameId, entryId, newText) => {
     setGames((prevGames) =>
       prevGames.map((game) => {
         if (game.id === gameId) {
           return {
             ...game,
-            entries: game.entries.map((entry) => {
-              if (entry.id === entryId) {
-                return { ...entry, text: newText };
-              }
-              return entry;
-            }),
+            entries: game.entries.map((entry) =>
+              entry.id === entryId ? { ...entry, text: newText } : entry
+            ),
           };
         }
         return game;
@@ -287,6 +143,7 @@ export default function App() {
     );
   };
 
+  // Function to delete an entry
   const deleteEntry = (gameId, entryId) => {
     setGames((prevGames) =>
       prevGames.map((game) => {
@@ -297,6 +154,7 @@ export default function App() {
           return {
             ...game,
             entries: updatedEntries,
+            // Update lastEntry if we deleted the most recent entry
             lastEntry:
               updatedEntries.length > 0
                 ? updatedEntries[0].date
@@ -308,12 +166,74 @@ export default function App() {
     );
   };
 
-  const getGame = (gameId) => {
-    return games.find((game) => game.id === gameId);
+  // Function to add photo to an entry
+  const addPhotoToEntry = (gameId, entryId, photoData) => {
+    setGames((prevGames) =>
+      prevGames.map((game) => {
+        if (game.id === gameId) {
+          return {
+            ...game,
+            entries: game.entries.map((entry) => {
+              if (entry.id === entryId) {
+                return {
+                  ...entry,
+                  images: [...entry.images, photoData],
+                };
+              }
+              return entry;
+            }),
+          };
+        }
+        return game;
+      })
+    );
   };
 
-  if (isLoading) {
-    return null;
+  // Function to delete photo from an entry
+  const deletePhotoFromEntry = async (gameId, entryId, photoId) => {
+    try {
+      // Find the photo to get its file path
+      const game = games.find((g) => g.id === gameId);
+      const entry = game?.entries.find((e) => e.id === entryId);
+      const photo = entry?.images.find((img) => img.id === photoId);
+
+      // Delete the physical file
+      if (photo && photo.uri) {
+        const FileSystem = await import("expo-file-system");
+        const fileInfo = await FileSystem.getInfoAsync(photo.uri);
+        if (fileInfo.exists) {
+          await FileSystem.deleteAsync(photo.uri);
+        }
+      }
+
+      // Remove from state
+      setGames((prevGames) =>
+        prevGames.map((game) => {
+          if (game.id === gameId) {
+            return {
+              ...game,
+              entries: game.entries.map((entry) => {
+                if (entry.id === entryId) {
+                  return {
+                    ...entry,
+                    images: entry.images.filter((img) => img.id !== photoId),
+                  };
+                }
+                return entry;
+              }),
+            };
+          }
+          return game;
+        })
+      );
+    } catch (error) {
+      console.error("Failed to delete photo:", error);
+    }
+  };
+
+  // Don't render navigation until data is loaded
+  if (!isLoaded) {
+    return null; // Or a loading screen
   }
 
   return (
@@ -322,19 +242,20 @@ export default function App() {
         <Stack.Navigator
           initialRouteName="Home"
           screenOptions={{
-            headerShown: false,
+            headerShown: false, // We'll use custom headers
           }}
         >
           <Stack.Screen name="Home">
             {(props) => (
               <HomeScreen
                 {...props}
-                games={games}
+                games={getSortedGames()} // Pass sorted games
                 addGame={addGame}
                 deleteGame={deleteGame}
               />
             )}
           </Stack.Screen>
+
           <Stack.Screen name="GameDetail">
             {(props) => (
               <GameDetailScreen
@@ -343,12 +264,16 @@ export default function App() {
                 addEntry={addEntry}
                 editEntry={editEntry}
                 deleteEntry={deleteEntry}
+                addPhotoToEntry={addPhotoToEntry}
+                deletePhotoFromEntry={deletePhotoFromEntry}
               />
             )}
           </Stack.Screen>
+
           <Stack.Screen name="AddGame">
             {(props) => <AddGameScreen {...props} addGame={addGame} />}
           </Stack.Screen>
+
           <Stack.Screen name="Settings">
             {(props) => <SettingsScreen {...props} />}
           </Stack.Screen>
@@ -356,4 +281,6 @@ export default function App() {
       </NavigationContainer>
     </ThemeProvider>
   );
-}
+};
+
+export default App;
