@@ -7,7 +7,7 @@ import {
   Pressable,
   Modal,
 } from "react-native";
-import { useTheme } from "../../App"; // Fixed: changed from "../../App" to "../../App"
+import { useTheme } from "../../App";
 
 const HomeScreen = ({ navigation, games, addGame, deleteGame }) => {
   const { theme, getTextSize } = useTheme();
@@ -117,46 +117,55 @@ const HomeScreen = ({ navigation, games, addGame, deleteGame }) => {
               ]}
               onPress={() => handleGameSelect(game.id, game.title)}
             >
-              <View style={styles.gameImage}>
-                <Text style={styles.imagePlaceholder}>
-                  {game.image ? game.image.emoji : "🎮"}
+              {/* Game Title - Now at the top! */}
+              <View style={styles.gameTitleContainer}>
+                <Text style={styles.gameTitle} numberOfLines={2}>
+                  {game.title}
                 </Text>
+                <View style={styles.gameActions}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      pressed && styles.buttonPressed,
+                    ]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleGameSelect(game.id, game.title);
+                    }}
+                  >
+                    <Text style={styles.actionButtonText}>📝</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.deleteButton,
+                      pressed && styles.deleteButtonPressed,
+                    ]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleDelete(game.id, game.title);
+                    }}
+                  >
+                    <Text style={styles.deleteButtonText}>🗑️</Text>
+                  </Pressable>
+                </View>
               </View>
-              <View style={styles.gameInfo}>
-                <Text style={styles.gameTitle}>{game.title}</Text>
-                <Text style={styles.lastEntry}>
-                  Last entry: {game.lastEntry}
-                </Text>
-                <Text style={styles.entryCount}>
-                  {game.entries.length}{" "}
-                  {game.entries.length === 1 ? "entry" : "entries"}
-                </Text>
-              </View>
-              <View style={styles.gameActions}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    pressed && styles.buttonPressed,
-                  ]}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleGameSelect(game.id, game.title);
-                  }}
-                >
-                  <Text style={styles.actionButtonText}>📝</Text>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.deleteButton,
-                    pressed && styles.deleteButtonPressed,
-                  ]}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleDelete(game.id, game.title);
-                  }}
-                >
-                  <Text style={styles.deleteButtonText}>🗑️</Text>
-                </Pressable>
+
+              {/* Content Row - Icon and Info */}
+              <View style={styles.gameContentRow}>
+                <View style={styles.gameImage}>
+                  <Text style={styles.imagePlaceholder}>
+                    {game.image ? game.image.emoji : "🎮"}
+                  </Text>
+                </View>
+                <View style={styles.gameInfo}>
+                  <Text style={styles.lastEntry}>
+                    Last entry: {game.lastEntry}
+                  </Text>
+                  <Text style={styles.entryCount}>
+                    {game.entries.length}{" "}
+                    {game.entries.length === 1 ? "entry" : "entries"}
+                  </Text>
+                </View>
               </View>
             </Pressable>
           ))
@@ -241,12 +250,14 @@ const getStyles = (theme, getTextSize) =>
       fontWeight: "bold",
       marginBottom: 8,
       color: theme.text,
+      fontFamily: "monospace", // Gaming-style font
     },
     quote: {
       fontSize: getTextSize(16),
       color: theme.secondaryText,
       marginBottom: 20,
       fontStyle: "italic",
+      fontFamily: "monospace",
     },
     headerButtons: {
       flexDirection: "row",
@@ -265,6 +276,7 @@ const getStyles = (theme, getTextSize) =>
       color: theme.isDark ? theme.background : "#ffffff",
       fontSize: getTextSize(16),
       fontWeight: "bold",
+      fontFamily: "monospace",
     },
     settingsButton: {
       backgroundColor: theme.buttonSecondary,
@@ -277,6 +289,7 @@ const getStyles = (theme, getTextSize) =>
     settingsButtonText: {
       color: "#ffffff",
       fontSize: getTextSize(16),
+      fontFamily: "monospace",
     },
     buttonPressed: {
       opacity: 0.7,
@@ -300,6 +313,7 @@ const getStyles = (theme, getTextSize) =>
       fontWeight: "bold",
       color: theme.text,
       marginBottom: 10,
+      fontFamily: "monospace",
     },
     emptyStateMessage: {
       fontSize: getTextSize(16),
@@ -307,6 +321,7 @@ const getStyles = (theme, getTextSize) =>
       textAlign: "center",
       marginBottom: 30,
       paddingHorizontal: 20,
+      fontFamily: "monospace",
     },
     emptyStateButton: {
       backgroundColor: theme.buttonPrimary,
@@ -318,14 +333,13 @@ const getStyles = (theme, getTextSize) =>
       color: theme.isDark ? theme.background : "#ffffff",
       fontSize: getTextSize(16),
       fontWeight: "bold",
+      fontFamily: "monospace",
     },
     gameCard: {
-      flexDirection: "row",
       backgroundColor: theme.cardBackground,
       padding: 18,
       marginBottom: 15,
       borderRadius: 12,
-      alignItems: "center",
       shadowColor: theme.shadowColor,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -337,6 +351,31 @@ const getStyles = (theme, getTextSize) =>
     cardPressed: {
       backgroundColor: theme.isDark ? "#3a3a3a" : "#f8f8f8",
       transform: [{ scale: 0.98 }],
+    },
+    // NEW LAYOUT: Title at top with actions
+    gameTitleContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 12,
+    },
+    gameTitle: {
+      flex: 1,
+      fontSize: getTextSize(19),
+      fontWeight: "bold",
+      color: theme.text,
+      marginRight: 15,
+      fontFamily: "monospace", // Gaming font!
+      letterSpacing: 0.5, // Slightly spaced for retro feel
+    },
+    gameActions: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    // Content row with icon and info
+    gameContentRow: {
+      flexDirection: "row",
+      alignItems: "center",
     },
     gameImage: {
       width: 60,
@@ -353,43 +392,36 @@ const getStyles = (theme, getTextSize) =>
     gameInfo: {
       flex: 1,
     },
-    gameTitle: {
-      fontSize: getTextSize(18),
-      fontWeight: "bold",
-      marginBottom: 4,
-      color: theme.text,
-    },
     lastEntry: {
       fontSize: getTextSize(14),
       color: theme.secondaryText,
-      marginBottom: 2,
+      marginBottom: 4,
+      fontFamily: "monospace",
     },
     entryCount: {
-      fontSize: getTextSize(12),
+      fontSize: getTextSize(13),
       color: theme.secondaryText,
       opacity: 0.8,
-    },
-    gameActions: {
-      flexDirection: "row",
-      gap: 8,
+      fontFamily: "monospace",
+      fontWeight: "600",
     },
     actionButton: {
       backgroundColor: theme.buttonSuccess,
-      paddingHorizontal: 15,
-      paddingVertical: 12,
-      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 6,
     },
     actionButtonText: {
-      fontSize: getTextSize(18),
+      fontSize: getTextSize(16),
     },
     deleteButton: {
       backgroundColor: theme.buttonDanger,
-      paddingHorizontal: 15,
-      paddingVertical: 12,
-      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 6,
     },
     deleteButtonText: {
-      fontSize: getTextSize(18),
+      fontSize: getTextSize(16),
     },
     deleteButtonPressed: {
       backgroundColor: "#FF6B6B",
@@ -419,6 +451,7 @@ const getStyles = (theme, getTextSize) =>
       fontWeight: "bold",
       marginBottom: 10,
       color: theme.text,
+      fontFamily: "monospace",
     },
     modalMessage: {
       fontSize: getTextSize(16),
@@ -426,6 +459,7 @@ const getStyles = (theme, getTextSize) =>
       marginBottom: 20,
       color: theme.secondaryText,
       lineHeight: 22,
+      fontFamily: "monospace",
     },
     deleteWarning: {
       fontSize: getTextSize(14),
@@ -433,6 +467,7 @@ const getStyles = (theme, getTextSize) =>
       color: theme.buttonDanger,
       marginBottom: 25,
       fontWeight: "600",
+      fontFamily: "monospace",
     },
     modalButton: {
       backgroundColor: theme.buttonPrimary,
@@ -444,6 +479,7 @@ const getStyles = (theme, getTextSize) =>
       color: theme.isDark ? theme.background : "#ffffff",
       fontSize: getTextSize(16),
       fontWeight: "bold",
+      fontFamily: "monospace",
     },
     modalButtons: {
       flexDirection: "row",
