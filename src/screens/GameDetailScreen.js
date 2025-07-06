@@ -9,7 +9,14 @@ import {
   Modal,
 } from "react-native";
 
-const GameDetailScreen = ({ route, navigation, getGame, addEntry }) => {
+const GameDetailScreen = ({
+  route,
+  navigation,
+  getGame,
+  addEntry,
+  editEntry,
+  deleteEntry,
+}) => {
   // Get the game data passed from HomeScreen
   const { gameId } = route.params;
   const game = getGame(gameId);
@@ -22,6 +29,10 @@ const GameDetailScreen = ({ route, navigation, getGame, addEntry }) => {
 
   const [newEntryText, setNewEntryText] = useState("");
   const [showAddEntry, setShowAddEntry] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [editEntryText, setEditEntryText] = useState("");
+  const [longPressTimer, setLongPressTimer] = useState(null);
+  const [isLongPressing, setIsLongPressing] = useState(null);
 
   // Helper function to get today's date in local timezone
   const getTodaysDate = () => {
@@ -39,6 +50,47 @@ const GameDetailScreen = ({ route, navigation, getGame, addEntry }) => {
       setNewEntryText("");
       setShowAddEntry(false);
     }
+  };
+
+  // Function to start editing an entry
+  const handleEditEntry = (entry) => {
+    setEditingEntry(entry);
+    setEditEntryText(entry.text);
+  };
+
+  // Function to save edited entry
+  const handleSaveEdit = () => {
+    if (editEntryText.trim() && editingEntry) {
+      editEntry(gameId, editingEntry.id, editEntryText.trim());
+      setEditingEntry(null);
+      setEditEntryText("");
+    }
+  };
+
+  // Function to cancel editing
+  const handleCancelEdit = () => {
+    setEditingEntry(null);
+    setEditEntryText("");
+  };
+
+  // Function to handle long press start
+  const handleLongPressStart = (entry) => {
+    setIsLongPressing(entry.id);
+    const timer = setTimeout(() => {
+      // Delete after 3 seconds
+      deleteEntry(gameId, entry.id);
+      setIsLongPressing(null);
+    }, 3000);
+    setLongPressTimer(timer);
+  };
+
+  // Function to handle long press end (user lifted finger)
+  const handleLongPressEnd = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+    setIsLongPressing(null);
   };
 
   // Function to format date nicely
@@ -88,10 +140,40 @@ const GameDetailScreen = ({ route, navigation, getGame, addEntry }) => {
       {/* Entries List */}
       <ScrollView style={styles.entriesList}>
         {game.entries.map((entry) => (
-          <View key={entry.id} style={styles.entryCard}>
-            <Text style={styles.entryDate}>
-              Entry from {formatDate(entry.date)}
-            </Text>
+          <View
+            key={entry.id}
+            style={[
+              styles.entryCard,
+              isLongPressing === entry.id && styles.entryCardDeleting,
+            ]}
+          >
+            <View style={styles.entryHeader}>
+              <Text style={styles.entryDate}>
+                Entry from {formatDate(entry.date)}
+              </Text>
+              <View style={styles.entryActions}>
+                <Pressable
+                  style={styles.editButton}
+                  onPress={() => handleEditEntry(entry)}
+                >
+                  <Text style={styles.editButtonText}>✏️</Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.deleteEntryButton,
+                    isLongPressing === entry.id &&
+                      styles.deleteEntryButtonPressed,
+                  ]}
+                  onPressIn={() => handleLongPressStart(entry)}
+                  onPressOut={handleLongPressEnd}
+                  onLongPress={() => {}} // Required for onPressIn/Out to work properly
+                >
+                  <Text style={styles.deleteEntryButtonText}>
+                    {isLongPressing === entry.id ? "⏱️" : "🗑️"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
             <View style={styles.entryContent}>
               <Text style={styles.entryText}>{entry.text}</Text>
               {/* Placeholder for images */}
@@ -146,6 +228,49 @@ const GameDetailScreen = ({ route, navigation, getGame, addEntry }) => {
                 disabled={!newEntryText.trim()}
               >
                 <Text style={styles.saveButtonText}>Save Entry</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Entry Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={editingEntry !== null}
+        onRequestClose={handleCancelEdit}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.addEntryModal}>
+            <Text style={styles.modalTitle}>Edit Entry</Text>
+            <Text style={styles.modalSubtitle}>
+              {editingEntry && formatDate(editingEntry.date)}
+            </Text>
+
+            <TextInput
+              style={styles.textInput}
+              placeholder="Edit your game notes..."
+              multiline={true}
+              numberOfLines={6}
+              value={editEntryText}
+              onChangeText={setEditEntryText}
+              textAlignVertical="top"
+            />
+
+            <View style={styles.modalButtons}>
+              <Pressable style={styles.cancelButton} onPress={handleCancelEdit}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.saveButton,
+                  !editEntryText.trim() && styles.saveButtonDisabled,
+                ]}
+                onPress={handleSaveEdit}
+                disabled={!editEntryText.trim()}
+              >
+                <Text style={styles.saveButtonText}>Save Changes</Text>
               </Pressable>
             </View>
           </View>
@@ -240,12 +365,55 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  entryCardDeleting: {
+    backgroundColor: "#FFF5F5",
+    borderColor: "#FF3B30",
+    borderWidth: 2,
+  },
+  entryHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
   },
   entryDate: {
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 15,
     color: "#333",
+    flex: 1,
+  },
+  entryActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  editButton: {
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  editButtonText: {
+    fontSize: 16,
+  },
+  deleteEntryButton: {
+    backgroundColor: "#FF3B30",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  deleteEntryButtonPressed: {
+    backgroundColor: "#FFE5E5",
+    borderColor: "#FF3B30",
+    borderWidth: 2,
+    transform: [{ scale: 1.15 }],
+  },
+  deleteEntryButtonText: {
+    fontSize: 16,
   },
   entryContent: {
     flexDirection: "row",

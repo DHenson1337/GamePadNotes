@@ -25,7 +25,7 @@ const HomeScreen = ({ navigation, games, addGame, deleteGame }) => {
 
   // Function to handle adding a new game
   const handleAddGame = () => {
-    showMessage("Add Game", "This will open the Add Game screen later!");
+    navigation.navigate("AddGame");
   };
 
   // Function to handle settings

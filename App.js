@@ -4,6 +4,7 @@ import { createStackNavigator } from "@react-navigation/stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import HomeScreen from "./src/screens/HomeScreen";
 import GameDetailScreen from "./src/screens/GameDetailScreen";
+import AddGameScreen from "./src/screens/AddGameScreen";
 
 const Stack = createStackNavigator();
 
@@ -145,6 +146,48 @@ export default function App() {
     );
   };
 
+  // Function to edit an entry
+  const editEntry = (gameId, entryId, newText) => {
+    setGames((prevGames) =>
+      prevGames.map((game) => {
+        if (game.id === gameId) {
+          return {
+            ...game,
+            entries: game.entries.map((entry) => {
+              if (entry.id === entryId) {
+                return { ...entry, text: newText };
+              }
+              return entry;
+            }),
+          };
+        }
+        return game;
+      })
+    );
+  };
+
+  // Function to delete an entry
+  const deleteEntry = (gameId, entryId) => {
+    setGames((prevGames) =>
+      prevGames.map((game) => {
+        if (game.id === gameId) {
+          const updatedEntries = game.entries.filter(
+            (entry) => entry.id !== entryId
+          );
+          return {
+            ...game,
+            entries: updatedEntries,
+            lastEntry:
+              updatedEntries.length > 0
+                ? updatedEntries[0].date
+                : getTodaysDate(),
+          };
+        }
+        return game;
+      })
+    );
+  };
+
   // Function to get a specific game
   const getGame = (gameId) => {
     return games.find((game) => game.id === gameId);
@@ -179,8 +222,13 @@ export default function App() {
               {...props}
               getGame={getGame}
               addEntry={addEntry}
+              editEntry={editEntry}
+              deleteEntry={deleteEntry}
             />
           )}
+        </Stack.Screen>
+        <Stack.Screen name="AddGame">
+          {(props) => <AddGameScreen {...props} addGame={addGame} />}
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
