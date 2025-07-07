@@ -149,32 +149,34 @@ const SettingsScreen = ({ navigation }) => {
 
   // Import data from file
   const handleImportBackup = async () => {
-    if (Platform.OS === "web") {
-      // Web import
-      if (!fileInputRef.current) return;
+    setIsImporting(true);
 
-      fileInputRef.current.onchange = async (event) => {
-        const file = event.target.files[0];
-        if (file) {
-          setIsImporting(true);
-
-          try {
-            const fileContent = await file.text();
-            await processBackupData(fileContent);
-          } catch (error) {
-            console.error("Import error:", error);
-            Alert.alert("IMPORT ERROR", "INVALID BACKUP FILE OR READ ERROR.");
-          }
-
+    try {
+      if (Platform.OS === "web") {
+        // Web import
+        if (!fileInputRef.current) {
           setIsImporting(false);
+          return;
         }
-      };
 
-      fileInputRef.current.click();
-    } else {
-      // Mobile import
-      try {
-        setIsImporting(true);
+        fileInputRef.current.onchange = async (event) => {
+          try {
+            const file = event.target.files[0];
+            if (file) {
+              const fileContent = await file.text();
+              await processBackupData(fileContent);
+            }
+          } catch (error) {
+            console.error("Web import error:", error);
+            Alert.alert("IMPORT ERROR", "FAILED TO READ BACKUP FILE.");
+          } finally {
+            setIsImporting(false);
+          }
+        };
+
+        fileInputRef.current.click();
+      } else {
+        // Mobile import
         const DocumentPicker = await import("expo-document-picker");
 
         const result = await DocumentPicker.getDocumentAsync({
@@ -189,25 +191,27 @@ const SettingsScreen = ({ navigation }) => {
           );
           await processBackupData(fileContent);
         }
-
-        setIsImporting(false);
-      } catch (error) {
-        console.error("Mobile import error:", error);
-        Alert.alert("IMPORT ERROR", "FAILED TO IMPORT BACKUP FILE.");
         setIsImporting(false);
       }
+    } catch (error) {
+      console.error("Import error:", error);
+      Alert.alert("IMPORT ERROR", "FAILED TO IMPORT BACKUP FILE.");
+      setIsImporting(false);
     }
   };
 
   // Process backup data
   const processBackupData = async (fileContent) => {
     try {
+      console.log("Processing backup data...");
       const backup = JSON.parse(fileContent);
 
       // Validate backup structure
       if (!backup.games || !Array.isArray(backup.games)) {
-        throw new Error("Invalid backup file format");
+        throw new Error("Invalid backup file format - missing games array");
       }
+
+      console.log("Backup validated, showing confirmation...");
 
       // Show confirmation with backup details
       Alert.alert(
@@ -228,34 +232,69 @@ const SettingsScreen = ({ navigation }) => {
             style: "destructive",
             onPress: async () => {
               try {
-                // Save imported data
+                console.log("User confirmed, starting restore...");
+
+                // Clear existing data first
+                await AsyncStorage.multiRemove([
+                  "@gamepad_notes_games",
+                  "@gamepad_notes_settings",
+                ]);
+
+                console.log("Cleared existing data");
+
+                // Save imported games data
                 await AsyncStorage.setItem(
                   "@gamepad_notes_games",
                   JSON.stringify(backup.games)
                 );
 
+                console.log("Saved games data");
+
                 // Import settings if available
-                if (backup.settings) {
+                if (
+                  backup.settings &&
+                  Object.keys(backup.settings).length > 0
+                ) {
                   await AsyncStorage.setItem(
                     "@gamepad_notes_settings",
                     JSON.stringify(backup.settings)
                   );
+                  console.log("Saved settings data");
                 }
+
+                console.log("Import completed successfully");
 
                 Alert.alert(
                   "IMPORT SUCCESS",
-                  "YOUR DATA HAS BEEN RESTORED! RESTART THE APP TO SEE YOUR IMPORTED GAMES.",
-                  [{ text: "OK", onPress: () => navigation.navigate("Home") }]
+                  "YOUR DATA HAS BEEN RESTORED! THE APP WILL REFRESH TO SHOW YOUR IMPORTED GAMES.",
+                  [
+                    {
+                      text: "OK",
+                      onPress: () => {
+                        // Force app refresh by navigating to Home
+                        navigation.reset({
+                          index: 0,
+                          routes: [{ name: "Home" }],
+                        });
+                      },
+                    },
+                  ]
                 );
               } catch (error) {
-                Alert.alert("IMPORT ERROR", "FAILED TO RESTORE DATA.");
+                console.error("Restore error:", error);
+                Alert.alert(
+                  "IMPORT ERROR",
+                  `FAILED TO RESTORE DATA: ${error.message}`
+                );
               }
             },
           },
         ]
       );
     } catch (error) {
-      throw new Error("Failed to parse backup file");
+      console.error("Parse error:", error);
+      Alert.alert("IMPORT ERROR", `INVALID BACKUP FILE: ${error.message}`);
+      throw error;
     }
   };
 
@@ -271,16 +310,47 @@ const SettingsScreen = ({ navigation }) => {
           style: "destructive",
           onPress: async () => {
             try {
-              await AsyncStorage.multiRemove([
-                "@gamepad_notes_games",
-                "@gamepad_notes_settings",
-              ]);
+              console.log("Starting data clear...");
+
+              // Get all AsyncStorage keys first
+              const keys = await AsyncStorage.getAllKeys();
+              console.log("All keys:", keys);
+
+              // Filter for GamePad Notes keys
+              const gamepadKeys = keys.filter(
+                (key) =>
+                  key.includes("gamepad") || key.includes("@gamepad_notes")
+              );
+
+              console.log("GamePad keys to remove:", gamepadKeys);
+
+              if (gamepadKeys.length > 0) {
+                await AsyncStorage.multiRemove(gamepadKeys);
+              } else {
+                // Fallback - remove specific keys
+                await AsyncStorage.multiRemove([
+                  "@gamepad_notes_games",
+                  "@gamepad_notes_settings",
+                ]);
+              }
+
+              console.log("Data cleared successfully");
+
               Alert.alert("SUCCESS", "ALL DATA HAS BEEN CLEARED.", [
-                { text: "OK", onPress: () => navigation.navigate("Home") },
+                {
+                  text: "OK",
+                  onPress: () => {
+                    // Force app refresh
+                    navigation.reset({
+                      index: 0,
+                      routes: [{ name: "Home" }],
+                    });
+                  },
+                },
               ]);
             } catch (error) {
               console.error("Clear data error:", error);
-              Alert.alert("ERROR", "FAILED TO CLEAR DATA.");
+              Alert.alert("ERROR", `FAILED TO CLEAR DATA: ${error.message}`);
             }
           },
         },
