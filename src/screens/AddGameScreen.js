@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,9 @@ import {
   Modal,
   Image,
   Platform,
+  BackHandler,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { useTheme } from "../../ThemeContext";
 import GameImagePicker from "../components/GameImagePicker";
 
@@ -20,6 +22,27 @@ const AddGameScreen = ({ navigation, addGame }) => {
   const [customImage, setCustomImage] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showImagePicker, setShowImagePicker] = useState(false);
+
+  // Handle Android back button
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        // Navigate to Home instead of closing app
+        navigation.navigate("Home");
+        return true; // Prevent default behavior
+      };
+
+      if (Platform.OS === "android") {
+        const subscription = BackHandler.addEventListener(
+          "hardwareBackPress",
+          onBackPress
+        );
+        return () => subscription?.remove();
+      }
+
+      return undefined;
+    }, [navigation])
+  );
 
   // Default game image options
   const imageOptions = [
@@ -58,7 +81,12 @@ const AddGameScreen = ({ navigation, addGame }) => {
   // Function to handle success modal close
   const handleSuccessClose = () => {
     setShowSuccessModal(false);
-    navigation.goBack(); // Return to home screen
+    navigation.navigate("Home"); // Explicitly navigate to Home
+  };
+
+  // Function to handle cancel
+  const handleCancel = () => {
+    navigation.navigate("Home"); // Navigate to Home instead of goBack
   };
 
   const styles = getStyles(theme, getTextSize);
@@ -67,10 +95,7 @@ const AddGameScreen = ({ navigation, addGame }) => {
     <View style={styles.container}>
       {/* Header with Submit Button */}
       <View style={styles.header}>
-        <Pressable
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <Pressable style={styles.backButton} onPress={handleCancel}>
           <Text style={styles.backButtonText}>← CANCEL</Text>
         </Pressable>
         <Text style={styles.headerTitle}>ADD NEW GAME</Text>

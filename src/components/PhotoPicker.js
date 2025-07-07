@@ -7,10 +7,8 @@ import {
   Modal,
   Alert,
   Dimensions,
+  Platform,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
-import * as ImageManipulator from "expo-image-manipulator";
 import { useTheme } from "../../ThemeContext";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -25,59 +23,235 @@ const PhotoPicker = ({
   const { theme, getTextSize } = useTheme();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Function to request permissions
-  const requestPermissions = async () => {
+  // Web-compatible photo capture
+  const takePhotoWeb = async () => {
     try {
-      // Request camera permission
+      setIsProcessing(true);
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        Alert.alert(
+          "CAMERA NOT SUPPORTED",
+          "YOUR BROWSER DOESN'T SUPPORT CAMERA ACCESS."
+        );
+        return;
+      }
+
+      // Get camera stream
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }, // Use back camera if available
+        audio: false,
+      });
+
+      // Create video element
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      video.autoplay = true;
+      video.style.position = "fixed";
+      video.style.top = "0";
+      video.style.left = "0";
+      video.style.width = "100vw";
+      video.style.height = "100vh";
+      video.style.objectFit = "cover";
+      video.style.zIndex = "10000";
+      video.style.backgroundColor = "black";
+
+      // Create capture button
+      const captureBtn = document.createElement("button");
+      captureBtn.textContent = "📷 TAKE PHOTO";
+      captureBtn.style.position = "fixed";
+      captureBtn.style.bottom = "30px";
+      captureBtn.style.left = "50%";
+      captureBtn.style.transform = "translateX(-50%)";
+      captureBtn.style.padding = "15px 30px";
+      captureBtn.style.fontSize = "18px";
+      captureBtn.style.backgroundColor = "#4a9b96";
+      captureBtn.style.color = "white";
+      captureBtn.style.border = "none";
+      captureBtn.style.borderRadius = "8px";
+      captureBtn.style.zIndex = "10001";
+
+      // Create close button
+      const closeBtn = document.createElement("button");
+      closeBtn.textContent = "✕ CLOSE";
+      closeBtn.style.position = "fixed";
+      closeBtn.style.top = "30px";
+      closeBtn.style.right = "30px";
+      closeBtn.style.padding = "10px 20px";
+      closeBtn.style.fontSize = "16px";
+      closeBtn.style.backgroundColor = "#666";
+      closeBtn.style.color = "white";
+      closeBtn.style.border = "none";
+      closeBtn.style.borderRadius = "6px";
+      closeBtn.style.zIndex = "10001";
+
+      // Add to DOM
+      document.body.appendChild(video);
+      document.body.appendChild(captureBtn);
+      document.body.appendChild(closeBtn);
+
+      // Handle capture
+      captureBtn.onclick = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0);
+
+        // Convert to blob and process
+        canvas.toBlob(
+          async (blob) => {
+            if (blob) {
+              const photoData = await processPhotoBlob(blob);
+              onPhotoSelected(photoData);
+              cleanup();
+              onClose();
+            }
+          },
+          "image/jpeg",
+          0.8
+        );
+      };
+
+      // Handle close
+      const cleanup = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        document.body.removeChild(video);
+        document.body.removeChild(captureBtn);
+        document.body.removeChild(closeBtn);
+        setIsProcessing(false);
+      };
+
+      closeBtn.onclick = cleanup;
+    } catch (error) {
+      console.error("Camera error:", error);
+      Alert.alert(
+        "CAMERA ERROR",
+        "UNABLE TO ACCESS CAMERA. TRY SELECTING FROM GALLERY INSTEAD."
+      );
+      setIsProcessing(false);
+    }
+  };
+
+  // Web-compatible gallery selection
+  const pickFromGalleryWeb = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.capture = "environment"; // Prefer camera if available
+
+    input.onchange = async (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        setIsProcessing(true);
+        const photoData = await processPhotoBlob(file);
+        onPhotoSelected(photoData);
+        setIsProcessing(false);
+        onClose();
+      }
+    };
+
+    input.click();
+  };
+
+  // Process photo blob into data URL
+  const processPhotoBlob = async (blob) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        // Create photo data object
+        const photoData = {
+          id: Date.now(),
+          uri: reader.result, // Data URL for web
+          filename: `gamepad_photo_${gameId}_${entryId}_${Date.now()}.jpg`,
+          width: 800, // Estimated
+          height: 600, // Estimated
+          dateAdded: new Date().toISOString(),
+        };
+        resolve(photoData);
+      };
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  // Mobile-compatible functions (keep existing Expo logic)
+  const takePhotoMobile = async () => {
+    try {
+      setIsProcessing(true);
+      const ImagePicker = await import("expo-image-picker");
+
       const cameraPermission =
         await ImagePicker.requestCameraPermissionsAsync();
       if (cameraPermission.status !== "granted") {
         Alert.alert(
           "PERMISSION NEEDED",
-          "CAMERA ACCESS IS REQUIRED TO TAKE PHOTOS. PLEASE ENABLE IN SETTINGS.",
-          [{ text: "OK" }]
+          "CAMERA ACCESS IS REQUIRED TO TAKE PHOTOS."
         );
-        return false;
+        setIsProcessing(false);
+        return;
       }
 
-      // Request media library permission
-      const mediaPermission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (mediaPermission.status !== "granted") {
-        Alert.alert(
-          "PERMISSION NEEDED",
-          "PHOTO LIBRARY ACCESS IS REQUIRED. PLEASE ENABLE IN SETTINGS.",
-          [{ text: "OK" }]
-        );
-        return false;
-      }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.9,
+      });
 
-      return true;
+      if (!result.canceled && result.assets[0]) {
+        await processAndSavePhotoMobile(result.assets[0].uri);
+      } else {
+        setIsProcessing(false);
+      }
     } catch (error) {
-      console.error("Permission request error:", error);
-      return false;
+      console.error("Camera error:", error);
+      Alert.alert("ERROR", "FAILED TO TAKE PHOTO. PLEASE TRY AGAIN.");
+      setIsProcessing(false);
     }
   };
 
-  // Function to create unique filename
-  const createPhotoFilename = () => {
-    const timestamp = Date.now();
-    return `gamepad_photo_${gameId}_${entryId}_${timestamp}.jpg`;
-  };
-
-  // Function to save and compress photo
-  const processAndSavePhoto = async (uri) => {
+  const pickFromGalleryMobile = async () => {
     try {
       setIsProcessing(true);
+      const ImagePicker = await import("expo-image-picker");
+
+      const mediaPermission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (mediaPermission.status !== "granted") {
+        Alert.alert("PERMISSION NEEDED", "PHOTO LIBRARY ACCESS IS REQUIRED.");
+        setIsProcessing(false);
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.9,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await processAndSavePhotoMobile(result.assets[0].uri);
+      } else {
+        setIsProcessing(false);
+      }
+    } catch (error) {
+      console.error("Gallery error:", error);
+      Alert.alert("ERROR", "FAILED TO SELECT PHOTO. PLEASE TRY AGAIN.");
+      setIsProcessing(false);
+    }
+  };
+
+  const processAndSavePhotoMobile = async (uri) => {
+    try {
+      const ImageManipulator = await import("expo-image-manipulator");
+      const FileSystem = await import("expo-file-system");
 
       // Compress and resize image
       const compressedImage = await ImageManipulator.manipulateAsync(
         uri,
-        [
-          { resize: { width: Math.min(800, screenWidth * 2) } }, // Max 800px wide
-        ],
+        [{ resize: { width: Math.min(800, screenWidth * 2) } }],
         {
-          compress: 0.8, // 80% quality
+          compress: 0.8,
           format: ImageManipulator.SaveFormat.JPEG,
         }
       );
@@ -91,7 +265,7 @@ const PhotoPicker = ({
       }
 
       // Create unique filename
-      const filename = createPhotoFilename();
+      const filename = `gamepad_photo_${gameId}_${entryId}_${Date.now()}.jpg`;
       const newPath = `${photosDir}${filename}`;
 
       // Copy compressed image to app directory
@@ -110,61 +284,20 @@ const PhotoPicker = ({
         dateAdded: new Date().toISOString(),
       };
 
-      setIsProcessing(false);
       onPhotoSelected(photoData);
+      setIsProcessing(false);
       onClose();
     } catch (error) {
-      setIsProcessing(false);
       console.error("Photo processing error:", error);
-      Alert.alert("ERROR", "FAILED TO SAVE PHOTO. PLEASE TRY AGAIN.", [
-        { text: "OK" },
-      ]);
+      Alert.alert("ERROR", "FAILED TO SAVE PHOTO. PLEASE TRY AGAIN.");
+      setIsProcessing(false);
     }
   };
 
-  // Function to take photo with camera
-  const takePhoto = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
-
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: "Images",
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.9,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        await processAndSavePhoto(result.assets[0].uri);
-      }
-    } catch (error) {
-      console.error("Camera error:", error);
-      Alert.alert("ERROR", "FAILED TO TAKE PHOTO. PLEASE TRY AGAIN.");
-    }
-  };
-
-  // Function to pick from gallery
-  const pickFromGallery = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
-
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: "Images",
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.9,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        await processAndSavePhoto(result.assets[0].uri);
-      }
-    } catch (error) {
-      console.error("Gallery error:", error);
-      Alert.alert("ERROR", "FAILED TO SELECT PHOTO. PLEASE TRY AGAIN.");
-    }
-  };
+  // Choose the right functions based on platform
+  const takePhoto = Platform.OS === "web" ? takePhotoWeb : takePhotoMobile;
+  const pickFromGallery =
+    Platform.OS === "web" ? pickFromGalleryWeb : pickFromGalleryMobile;
 
   const styles = getStyles(theme, getTextSize);
 
@@ -190,7 +323,9 @@ const PhotoPicker = ({
                 <Text style={styles.photoButtonIcon}>📷</Text>
                 <Text style={styles.photoButtonText}>TAKE PHOTO</Text>
                 <Text style={styles.photoButtonSubtext}>
-                  USE CAMERA TO CAPTURE MOMENT
+                  {Platform.OS === "web"
+                    ? "USE DEVICE CAMERA"
+                    : "USE CAMERA TO CAPTURE MOMENT"}
                 </Text>
               </Pressable>
 
@@ -198,7 +333,9 @@ const PhotoPicker = ({
                 <Text style={styles.photoButtonIcon}>🖼️</Text>
                 <Text style={styles.photoButtonText}>CHOOSE FROM GALLERY</Text>
                 <Text style={styles.photoButtonSubtext}>
-                  SELECT EXISTING SCREENSHOT
+                  {Platform.OS === "web"
+                    ? "SELECT IMAGE FILE"
+                    : "SELECT EXISTING SCREENSHOT"}
                 </Text>
               </Pressable>
             </View>
