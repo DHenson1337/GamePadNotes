@@ -8,6 +8,7 @@ import {
   ScrollView,
   Modal,
   Image,
+  Platform,
 } from "react-native";
 import { useTheme } from "../../ThemeContext";
 import GameImagePicker from "../components/GameImagePicker";
@@ -76,7 +77,12 @@ const AddGameScreen = ({ navigation, addGame }) => {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      {/* Scrollable Content */}
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Game Title Input */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🎮 GAME TITLE</Text>
@@ -112,7 +118,7 @@ const AddGameScreen = ({ navigation, addGame }) => {
           </View>
         </View>
 
-        {/* Custom Image Option - Now functional! */}
+        {/* Custom Image Option */}
         <View style={styles.section}>
           <Pressable
             style={[
@@ -143,6 +149,9 @@ const AddGameScreen = ({ navigation, addGame }) => {
             )}
           </Pressable>
         </View>
+
+        {/* Bottom padding to ensure button visibility */}
+        <View style={styles.bottomPadding} />
       </ScrollView>
 
       {/* Fixed Add Game Button at bottom */}
@@ -229,10 +238,12 @@ const getStyles = (theme, getTextSize) =>
     placeholder: {
       width: 80,
     },
-    content: {
+    scrollContainer: {
       flex: 1,
+    },
+    scrollContent: {
       padding: 20,
-      paddingBottom: 0,
+      paddingBottom: 100, // Extra padding for fixed button
     },
     section: {
       marginBottom: 30,
@@ -323,11 +334,20 @@ const getStyles = (theme, getTextSize) =>
       borderWidth: 2,
       borderColor: theme.borderColor,
     },
+    bottomPadding: {
+      height: 20,
+    },
     bottomSection: {
       backgroundColor: theme.headerBackground,
       padding: 20,
       borderTopWidth: 2,
       borderTopColor: theme.borderColor,
+      // Web-specific positioning
+      ...(Platform.OS === "web" && {
+        position: "sticky",
+        bottom: 0,
+        zIndex: 1000,
+      }),
     },
     addButton: {
       backgroundColor: theme.buttonPrimary,
