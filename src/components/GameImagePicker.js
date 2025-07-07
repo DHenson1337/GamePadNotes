@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -7,19 +7,96 @@ import {
   Modal,
   Alert,
   Image,
+  Platform,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
-import * as ImageManipulator from "expo-image-manipulator";
 import { useTheme } from "../../ThemeContext";
 
 const GameImagePicker = ({ visible, onClose, onImageSelected }) => {
   const { theme, getTextSize } = useTheme();
   const [isProcessing, setIsProcessing] = useState(false);
+  const fileInputRef = useRef(null);
 
-  // Function to request permissions
+  // Create hidden file input for web
+  React.useEffect(() => {
+    if (Platform.OS === "web" && !fileInputRef.current) {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.style.display = "none";
+      document.body.appendChild(input);
+      fileInputRef.current = input;
+
+      return () => {
+        if (document.body.contains(input)) {
+          document.body.removeChild(input);
+        }
+      };
+    }
+  }, []);
+
+  // Web photo selection
+  const selectImageWeb = (useCamera = false) => {
+    if (!fileInputRef.current) return;
+
+    const input = fileInputRef.current;
+
+    // Set capture attribute for camera
+    if (useCamera) {
+      input.setAttribute("capture", "environment");
+    } else {
+      input.removeAttribute("capture");
+    }
+
+    input.onchange = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        setIsProcessing(true);
+
+        // Check file size (limit to 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          Alert.alert(
+            "FILE TOO LARGE",
+            "PLEASE SELECT AN IMAGE SMALLER THAN 5MB."
+          );
+          setIsProcessing(false);
+          return;
+        }
+
+        // Convert to data URL
+        const reader = new FileReader();
+        reader.onload = () => {
+          const imageData = {
+            id: "custom",
+            name: "Custom Image",
+            emoji: null,
+            uri: reader.result, // Data URL for web
+            filename: `gamepad_cover_${Date.now()}.jpg`,
+            width: 200, // Estimated
+            height: 200, // Estimated
+            dateAdded: new Date().toISOString(),
+          };
+
+          onImageSelected(imageData);
+          setIsProcessing(false);
+          onClose();
+        };
+
+        reader.onerror = () => {
+          Alert.alert("ERROR", "FAILED TO READ IMAGE FILE.");
+          setIsProcessing(false);
+        };
+
+        reader.readAsDataURL(file);
+      }
+    };
+
+    input.click();
+  };
+
+  // Mobile functions (Expo) - keeping original logic
   const requestPermissions = async () => {
     try {
+      const ImagePicker = await import("expo-image-picker");
       const mediaPermission =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (mediaPermission.status !== "granted") {
@@ -37,25 +114,23 @@ const GameImagePicker = ({ visible, onClose, onImageSelected }) => {
     }
   };
 
-  // Function to create unique filename for game image
   const createGameImageFilename = () => {
     const timestamp = Date.now();
     return `gamepad_cover_${timestamp}.jpg`;
   };
 
-  // Function to save and compress game cover image
-  const processAndSaveImage = async (uri) => {
+  const processAndSaveImageMobile = async (uri) => {
     try {
       setIsProcessing(true);
+      const ImageManipulator = await import("expo-image-manipulator");
+      const FileSystem = await import("expo-file-system");
 
       // Compress and resize image for game cover (square format)
       const compressedImage = await ImageManipulator.manipulateAsync(
         uri,
-        [
-          { resize: { width: 200, height: 200 } }, // Square format for game covers
-        ],
+        [{ resize: { width: 200, height: 200 } }],
         {
-          compress: 0.8, // 80% quality
+          compress: 0.8,
           format: ImageManipulator.SaveFormat.JPEG,
         }
       );
@@ -102,19 +177,20 @@ const GameImagePicker = ({ visible, onClose, onImageSelected }) => {
     }
   };
 
-  // Function to take photo with camera
-  const takePhoto = async () => {
-    const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
-    if (cameraPermission.status !== "granted") {
-      Alert.alert(
-        "PERMISSION NEEDED",
-        "CAMERA ACCESS IS REQUIRED TO TAKE GAME COVER PHOTOS.",
-        [{ text: "OK" }]
-      );
-      return;
-    }
-
+  const takePhotoMobile = async () => {
     try {
+      const ImagePicker = await import("expo-image-picker");
+      const cameraPermission =
+        await ImagePicker.requestCameraPermissionsAsync();
+      if (cameraPermission.status !== "granted") {
+        Alert.alert(
+          "PERMISSION NEEDED",
+          "CAMERA ACCESS IS REQUIRED TO TAKE GAME COVER PHOTOS.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: "Images",
         allowsEditing: true,
@@ -123,7 +199,7 @@ const GameImagePicker = ({ visible, onClose, onImageSelected }) => {
       });
 
       if (!result.canceled && result.assets[0]) {
-        await processAndSaveImage(result.assets[0].uri);
+        await processAndSaveImageMobile(result.assets[0].uri);
       }
     } catch (error) {
       console.error("Camera error:", error);
@@ -131,12 +207,12 @@ const GameImagePicker = ({ visible, onClose, onImageSelected }) => {
     }
   };
 
-  // Function to pick from gallery
-  const pickFromGallery = async () => {
+  const pickFromGalleryMobile = async () => {
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
 
     try {
+      const ImagePicker = await import("expo-image-picker");
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: "Images",
         allowsEditing: true,
@@ -145,13 +221,19 @@ const GameImagePicker = ({ visible, onClose, onImageSelected }) => {
       });
 
       if (!result.canceled && result.assets[0]) {
-        await processAndSaveImage(result.assets[0].uri);
+        await processAndSaveImageMobile(result.assets[0].uri);
       }
     } catch (error) {
       console.error("Gallery error:", error);
       Alert.alert("ERROR", "FAILED TO SELECT IMAGE. PLEASE TRY AGAIN.");
     }
   };
+
+  // Choose functions based on platform
+  const takePhoto =
+    Platform.OS === "web" ? () => selectImageWeb(true) : takePhotoMobile;
+  const pickFromGallery =
+    Platform.OS === "web" ? () => selectImageWeb(false) : pickFromGalleryMobile;
 
   const styles = getStyles(theme, getTextSize);
 
@@ -179,7 +261,9 @@ const GameImagePicker = ({ visible, onClose, onImageSelected }) => {
                 <Text style={styles.imageButtonIcon}>📷</Text>
                 <Text style={styles.imageButtonText}>TAKE PHOTO</Text>
                 <Text style={styles.imageButtonSubtext}>
-                  PHOTOGRAPH GAME BOX OR SCREEN
+                  {Platform.OS === "web"
+                    ? "PHOTOGRAPH GAME BOX"
+                    : "PHOTOGRAPH GAME BOX OR SCREEN"}
                 </Text>
               </Pressable>
 
@@ -187,7 +271,9 @@ const GameImagePicker = ({ visible, onClose, onImageSelected }) => {
                 <Text style={styles.imageButtonIcon}>🖼️</Text>
                 <Text style={styles.imageButtonText}>CHOOSE FROM GALLERY</Text>
                 <Text style={styles.imageButtonSubtext}>
-                  SELECT EXISTING GAME ARTWORK
+                  {Platform.OS === "web"
+                    ? "SELECT IMAGE FROM DEVICE"
+                    : "SELECT EXISTING GAME ARTWORK"}
                 </Text>
               </Pressable>
             </View>

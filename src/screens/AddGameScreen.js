@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,9 +9,7 @@ import {
   Modal,
   Image,
   Platform,
-  BackHandler,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
 import { useTheme } from "../../ThemeContext";
 import GameImagePicker from "../components/GameImagePicker";
 
@@ -23,26 +21,7 @@ const AddGameScreen = ({ navigation, addGame }) => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showImagePicker, setShowImagePicker] = useState(false);
 
-  // Handle Android back button
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        // Navigate to Home instead of closing app
-        navigation.navigate("Home");
-        return true; // Prevent default behavior
-      };
-
-      if (Platform.OS === "android") {
-        const subscription = BackHandler.addEventListener(
-          "hardwareBackPress",
-          onBackPress
-        );
-        return () => subscription?.remove();
-      }
-
-      return undefined;
-    }, [navigation])
-  );
+  // Remove the useFocusEffect - let App.js handle back button globally
 
   // Default game image options
   const imageOptions = [

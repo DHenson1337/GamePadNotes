@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -81,6 +81,7 @@ const getTodaysDate = () => {
 const App = () => {
   const [games, setGames] = useState(defaultData);
   const [isLoaded, setIsLoaded] = useState(false);
+  const navigationRef = useRef();
 
   // Load data from AsyncStorage on app start
   useEffect(() => {
@@ -93,6 +94,33 @@ const App = () => {
       saveData();
     }
   }, [games, isLoaded]);
+
+  // Handle Android back button globally
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      const backHandler = BackHandler.addEventListener(
+        "hardwareBackPress",
+        () => {
+          const currentRoute = navigationRef.current?.getCurrentRoute();
+
+          if (currentRoute) {
+            // If on Home screen, allow app to close/minimize
+            if (currentRoute.name === "Home") {
+              return false; // Let system handle (close app)
+            } else {
+              // On any other screen, navigate to Home
+              navigationRef.current?.navigate("Home");
+              return true; // Prevent default behavior
+            }
+          }
+
+          return false;
+        }
+      );
+
+      return () => backHandler.remove();
+    }
+  }, []);
 
   // Function to load data from storage
   const loadData = async () => {
@@ -248,8 +276,8 @@ const App = () => {
       const entry = game?.entries.find((e) => e.id === entryId);
       const photo = entry?.images.find((img) => img.id === photoId);
 
-      // Delete the physical file
-      if (photo && photo.uri) {
+      // For web, we don't need to delete files (data URLs)
+      if (Platform.OS !== "web" && photo && photo.uri) {
         const FileSystem = await import("expo-file-system");
         const fileInfo = await FileSystem.getInfoAsync(photo.uri);
         if (fileInfo.exists) {
@@ -289,20 +317,15 @@ const App = () => {
 
   return (
     <ThemeProvider>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <Stack.Navigator
           initialRouteName="Home"
           screenOptions={{
             headerShown: false, // We'll use custom headers
+            gestureEnabled: false, // Disable swipe gestures to prevent conflicts
           }}
         >
-          <Stack.Screen
-            name="Home"
-            options={{
-              // Prevent back button from closing app on home screen
-              gestureEnabled: false,
-            }}
-          >
+          <Stack.Screen name="Home">
             {(props) => (
               <HomeScreen
                 {...props}
@@ -313,13 +336,7 @@ const App = () => {
             )}
           </Stack.Screen>
 
-          <Stack.Screen
-            name="GameDetail"
-            options={{
-              // Allow back gesture but handle it properly
-              gestureEnabled: true,
-            }}
-          >
+          <Stack.Screen name="GameDetail">
             {(props) => (
               <GameDetailScreen
                 {...props}
@@ -333,23 +350,11 @@ const App = () => {
             )}
           </Stack.Screen>
 
-          <Stack.Screen
-            name="AddGame"
-            options={{
-              // Prevent back button from closing app, navigate to Home instead
-              gestureEnabled: true,
-            }}
-          >
+          <Stack.Screen name="AddGame">
             {(props) => <AddGameScreen {...props} addGame={addGame} />}
           </Stack.Screen>
 
-          <Stack.Screen
-            name="Settings"
-            options={{
-              // Allow back to home
-              gestureEnabled: true,
-            }}
-          >
+          <Stack.Screen name="Settings">
             {(props) => <SettingsScreen {...props} />}
           </Stack.Screen>
         </Stack.Navigator>
