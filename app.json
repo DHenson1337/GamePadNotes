@@ -45,7 +45,14 @@
       "backgroundColor": "#f8faf9",
       "startUrl": "/",
       "display": "standalone",
-      "orientation": "portrait"
+      "orientation": "portrait",
+      "scope": "/",
+      "shortName": "GamePad",
+      "description": "Your personal gaming notes companion",
+      "categories": ["games", "productivity", "lifestyle"],
+      "lang": "en",
+      "dir": "ltr",
+      "preferRelatedApplications": false
     },
     "plugins": [
       "expo-font",
