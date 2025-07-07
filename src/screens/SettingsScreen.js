@@ -18,6 +18,7 @@ const SettingsScreen = ({ navigation }) => {
   const [showAbout, setShowAbout] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const fileInputRef = useRef(null);
 
   // Create hidden file input for web import
@@ -43,10 +44,11 @@ const SettingsScreen = ({ navigation }) => {
     updateSettings({ [key]: value });
   };
 
-  // Export data to email
+  // FIXED Export data function with better error handling
   const handleExportToEmail = async () => {
     try {
       setIsExporting(true);
+      console.log("🔄 Starting export process...");
 
       // Get all game data and settings
       const gamesData = await AsyncStorage.getItem("@gamepad_notes_games");
@@ -54,20 +56,33 @@ const SettingsScreen = ({ navigation }) => {
         "@gamepad_notes_settings"
       );
 
+      console.log("📊 Games data length:", gamesData?.length || 0);
+      console.log("⚙️ Settings data length:", settingsData?.length || 0);
+
+      // Parse data safely
+      const games = JSON.parse(gamesData || "[]");
+      const settingsObj = JSON.parse(settingsData || "{}");
+
       // Create backup object
       const backup = {
         version: "1.0.0",
         exportDate: new Date().toISOString(),
         appName: "GamePad Notes",
         platform: Platform.OS,
-        games: JSON.parse(gamesData || "[]"),
-        settings: JSON.parse(settingsData || "{}"),
-        totalGames: JSON.parse(gamesData || "[]").length,
-        totalEntries: JSON.parse(gamesData || "[]").reduce(
-          (total, game) => total + game.entries.length,
+        games: games,
+        settings: settingsObj,
+        totalGames: games.length,
+        totalEntries: games.reduce(
+          (total, game) => total + (game.entries?.length || 0),
           0
         ),
       };
+
+      console.log("📦 Backup created:", {
+        totalGames: backup.totalGames,
+        totalEntries: backup.totalEntries,
+        platform: backup.platform,
+      });
 
       if (Platform.OS === "web") {
         // Web: Download backup file
@@ -88,6 +103,7 @@ const SettingsScreen = ({ navigation }) => {
         // Clean up
         URL.revokeObjectURL(url);
 
+        console.log("✅ Export completed successfully");
         Alert.alert(
           "BACKUP DOWNLOADED",
           "YOUR BACKUP FILE HAS BEEN DOWNLOADED! EMAIL IT TO YOURSELF FOR SAFEKEEPING.",
@@ -117,7 +133,9 @@ const SettingsScreen = ({ navigation }) => {
               mimeType: "application/json",
             });
           } else {
+            console.log("⚠️ Sharing not available, fallback to email");
             // Fallback to email
+            const { Linking } = await import("react-native");
             const subject = encodeURIComponent("GamePad Notes Backup");
             const body = encodeURIComponent(
               `Your GamePad Notes backup is ready.\n\n` +
@@ -131,7 +149,7 @@ const SettingsScreen = ({ navigation }) => {
             await Linking.openURL(mailtoUrl);
           }
         } catch (error) {
-          console.error("Mobile sharing error:", error);
+          console.error("❌ Mobile sharing error:", error);
           Alert.alert(
             "EXPORT ERROR",
             "FAILED TO SHARE BACKUP FILE. PLEASE TRY AGAIN."
@@ -141,42 +159,72 @@ const SettingsScreen = ({ navigation }) => {
 
       setIsExporting(false);
     } catch (error) {
-      console.error("Export error:", error);
-      Alert.alert("EXPORT ERROR", "FAILED TO CREATE BACKUP. PLEASE TRY AGAIN.");
+      console.error("❌ Export error:", error);
+      Alert.alert("EXPORT ERROR", `FAILED TO CREATE BACKUP: ${error.message}`);
       setIsExporting(false);
     }
   };
 
-  // Import data from file
+  // FIXED Import data function with enhanced debugging
   const handleImportBackup = async () => {
+    console.log("🔄 Starting import process...");
     setIsImporting(true);
 
     try {
       if (Platform.OS === "web") {
-        // Web import
+        // Web import with better error handling
         if (!fileInputRef.current) {
+          console.error("❌ File input ref is null");
+          Alert.alert(
+            "ERROR",
+            "FILE PICKER NOT AVAILABLE. PLEASE REFRESH AND TRY AGAIN."
+          );
           setIsImporting(false);
           return;
         }
+
+        console.log("📁 Opening file picker...");
 
         fileInputRef.current.onchange = async (event) => {
           try {
             const file = event.target.files[0];
             if (file) {
+              console.log("📄 File selected:", file.name, "Size:", file.size);
+
+              // Check file type
+              if (!file.name.endsWith(".json")) {
+                Alert.alert(
+                  "INVALID FILE",
+                  "PLEASE SELECT A .JSON BACKUP FILE."
+                );
+                setIsImporting(false);
+                return;
+              }
+
               const fileContent = await file.text();
+              console.log("📝 File content read, length:", fileContent.length);
+
               await processBackupData(fileContent);
+            } else {
+              console.log("❌ No file selected");
+              setIsImporting(false);
             }
           } catch (error) {
-            console.error("Web import error:", error);
-            Alert.alert("IMPORT ERROR", "FAILED TO READ BACKUP FILE.");
-          } finally {
+            console.error("❌ Web import error:", error);
+            Alert.alert(
+              "IMPORT ERROR",
+              `FAILED TO READ BACKUP FILE: ${error.message}`
+            );
             setIsImporting(false);
           }
         };
 
+        // Reset the input to allow selecting the same file again
+        fileInputRef.current.value = "";
         fileInputRef.current.click();
       } else {
         // Mobile import
+        console.log("📱 Starting mobile import...");
         const DocumentPicker = await import("expo-document-picker");
 
         const result = await DocumentPicker.getDocumentAsync({
@@ -185,120 +233,210 @@ const SettingsScreen = ({ navigation }) => {
         });
 
         if (!result.canceled && result.assets && result.assets[0]) {
+          console.log("📄 Document selected:", result.assets[0].name);
           const FileSystem = await import("expo-file-system");
           const fileContent = await FileSystem.readAsStringAsync(
             result.assets[0].uri
           );
           await processBackupData(fileContent);
+        } else {
+          console.log("❌ Document picker cancelled");
         }
         setIsImporting(false);
       }
     } catch (error) {
-      console.error("Import error:", error);
-      Alert.alert("IMPORT ERROR", "FAILED TO IMPORT BACKUP FILE.");
+      console.error("❌ Import error:", error);
+      Alert.alert(
+        "IMPORT ERROR",
+        `FAILED TO IMPORT BACKUP FILE: ${error.message}`
+      );
       setIsImporting(false);
     }
   };
 
-  // Process backup data
+  // FIXED Process backup data with better validation and error handling
   const processBackupData = async (fileContent) => {
     try {
-      console.log("Processing backup data...");
-      const backup = JSON.parse(fileContent);
+      console.log("🔍 Processing backup data...");
+      console.log(
+        "📝 File content preview:",
+        fileContent.substring(0, 200) + "..."
+      );
 
-      // Validate backup structure
-      if (!backup.games || !Array.isArray(backup.games)) {
-        throw new Error("Invalid backup file format - missing games array");
+      let backup;
+      try {
+        backup = JSON.parse(fileContent);
+      } catch (parseError) {
+        console.error("❌ JSON parse error:", parseError);
+        throw new Error("Invalid JSON format in backup file");
       }
 
-      console.log("Backup validated, showing confirmation...");
+      console.log("✅ JSON parsed successfully");
+      console.log("📦 Backup structure:", {
+        hasGames: !!backup.games,
+        gamesType: typeof backup.games,
+        gamesLength: backup.games?.length,
+        hasSettings: !!backup.settings,
+        version: backup.version,
+        appName: backup.appName,
+      });
+
+      // Enhanced validation
+      if (!backup.games || !Array.isArray(backup.games)) {
+        throw new Error(
+          "Invalid backup file format - missing or invalid games array"
+        );
+      }
+
+      if (!backup.version || !backup.appName) {
+        console.warn(
+          "⚠️ Backup missing version or app name, but proceeding..."
+        );
+      }
+
+      // Calculate totals for confirmation
+      const totalGames = backup.games.length;
+      const totalEntries = backup.games.reduce((total, game) => {
+        return total + (game.entries?.length || 0);
+      }, 0);
+
+      console.log("📊 Backup stats:", { totalGames, totalEntries });
 
       // Show confirmation with backup details
-      Alert.alert(
-        "IMPORT BACKUP",
-        `RESTORE BACKUP FROM ${new Date(
-          backup.exportDate
-        ).toLocaleDateString()}?\n\n` +
-          `🎮 GAMES: ${backup.totalGames || backup.games.length}\n` +
-          `📝 ENTRIES: ${
-            backup.totalEntries ||
-            backup.games.reduce((total, game) => total + game.entries.length, 0)
-          }\n\n` +
-          `⚠️ THIS WILL REPLACE ALL CURRENT DATA!`,
-        [
-          { text: "CANCEL", style: "cancel" },
-          {
-            text: "RESTORE",
-            style: "destructive",
-            onPress: async () => {
-              try {
-                console.log("User confirmed, starting restore...");
-
-                // Clear existing data first
-                await AsyncStorage.multiRemove([
-                  "@gamepad_notes_games",
-                  "@gamepad_notes_settings",
-                ]);
-
-                console.log("Cleared existing data");
-
-                // Save imported games data
-                await AsyncStorage.setItem(
-                  "@gamepad_notes_games",
-                  JSON.stringify(backup.games)
-                );
-
-                console.log("Saved games data");
-
-                // Import settings if available
-                if (
-                  backup.settings &&
-                  Object.keys(backup.settings).length > 0
-                ) {
-                  await AsyncStorage.setItem(
-                    "@gamepad_notes_settings",
-                    JSON.stringify(backup.settings)
-                  );
-                  console.log("Saved settings data");
-                }
-
-                console.log("Import completed successfully");
-
-                Alert.alert(
-                  "IMPORT SUCCESS",
-                  "YOUR DATA HAS BEEN RESTORED! THE APP WILL REFRESH TO SHOW YOUR IMPORTED GAMES.",
-                  [
-                    {
-                      text: "OK",
-                      onPress: () => {
-                        // Force app refresh by navigating to Home
-                        navigation.reset({
-                          index: 0,
-                          routes: [{ name: "Home" }],
-                        });
-                      },
-                    },
-                  ]
-                );
-              } catch (error) {
-                console.error("Restore error:", error);
-                Alert.alert(
-                  "IMPORT ERROR",
-                  `FAILED TO RESTORE DATA: ${error.message}`
-                );
-              }
+      return new Promise((resolve) => {
+        Alert.alert(
+          "IMPORT BACKUP",
+          `RESTORE BACKUP FROM ${
+            backup.exportDate
+              ? new Date(backup.exportDate).toLocaleDateString()
+              : "UNKNOWN DATE"
+          }?\n\n` +
+            `🎮 GAMES: ${totalGames}\n` +
+            `📝 ENTRIES: ${totalEntries}\n\n` +
+            `⚠️ THIS WILL REPLACE ALL CURRENT DATA!`,
+          [
+            {
+              text: "CANCEL",
+              style: "cancel",
+              onPress: () => {
+                console.log("❌ User cancelled import");
+                setIsImporting(false);
+                resolve();
+              },
             },
-          },
-        ]
-      );
+            {
+              text: "RESTORE",
+              style: "destructive",
+              onPress: async () => {
+                try {
+                  console.log("🔄 User confirmed, starting restore...");
+
+                  // Debug: Check current storage before clearing
+                  const currentKeys = await AsyncStorage.getAllKeys();
+                  console.log("🔑 Current AsyncStorage keys:", currentKeys);
+
+                  // Clear existing data first - using exact keys
+                  const keysToRemove = [
+                    "@gamepad_notes_games",
+                    "@gamepad_notes_settings",
+                  ];
+                  console.log("🗑️ Removing keys:", keysToRemove);
+
+                  await AsyncStorage.multiRemove(keysToRemove);
+                  console.log("✅ Cleared existing data");
+
+                  // Verify data was cleared
+                  const checkGames = await AsyncStorage.getItem(
+                    "@gamepad_notes_games"
+                  );
+                  const checkSettings = await AsyncStorage.getItem(
+                    "@gamepad_notes_settings"
+                  );
+                  console.log(
+                    "🔍 After clear - Games:",
+                    checkGames,
+                    "Settings:",
+                    checkSettings
+                  );
+
+                  // Save imported games data
+                  await AsyncStorage.setItem(
+                    "@gamepad_notes_games",
+                    JSON.stringify(backup.games)
+                  );
+                  console.log("💾 Saved games data");
+
+                  // Import settings if available
+                  if (
+                    backup.settings &&
+                    Object.keys(backup.settings).length > 0
+                  ) {
+                    await AsyncStorage.setItem(
+                      "@gamepad_notes_settings",
+                      JSON.stringify(backup.settings)
+                    );
+                    console.log("💾 Saved settings data");
+                  }
+
+                  // Verify data was saved
+                  const verifyGames = await AsyncStorage.getItem(
+                    "@gamepad_notes_games"
+                  );
+                  const verifySettings = await AsyncStorage.getItem(
+                    "@gamepad_notes_settings"
+                  );
+                  console.log(
+                    "✅ Verification - Games length:",
+                    verifyGames?.length,
+                    "Settings length:",
+                    verifySettings?.length
+                  );
+
+                  console.log("🎉 Import completed successfully");
+
+                  Alert.alert(
+                    "IMPORT SUCCESS",
+                    "YOUR DATA HAS BEEN RESTORED! THE APP WILL REFRESH TO SHOW YOUR IMPORTED GAMES.",
+                    [
+                      {
+                        text: "OK",
+                        onPress: () => {
+                          console.log("🔄 Refreshing app...");
+                          // Force app refresh by navigating to Home and resetting navigation stack
+                          navigation.reset({
+                            index: 0,
+                            routes: [{ name: "Home" }],
+                          });
+                        },
+                      },
+                    ]
+                  );
+
+                  setIsImporting(false);
+                  resolve();
+                } catch (error) {
+                  console.error("❌ Restore error:", error);
+                  Alert.alert(
+                    "IMPORT ERROR",
+                    `FAILED TO RESTORE DATA: ${error.message}`
+                  );
+                  setIsImporting(false);
+                  resolve();
+                }
+              },
+            },
+          ]
+        );
+      });
     } catch (error) {
-      console.error("Parse error:", error);
+      console.error("❌ Parse error:", error);
       Alert.alert("IMPORT ERROR", `INVALID BACKUP FILE: ${error.message}`);
+      setIsImporting(false);
       throw error;
     }
   };
 
-  // Clear all data - Fixed version
+  // FIXED Clear all data function with enhanced debugging
   const handleClearAllData = () => {
     Alert.alert(
       "CLEAR ALL DATA",
@@ -310,36 +448,75 @@ const SettingsScreen = ({ navigation }) => {
           style: "destructive",
           onPress: async () => {
             try {
-              console.log("Starting data clear...");
+              setIsClearing(true);
+              console.log("🔄 Starting data clear...");
 
-              // Get all AsyncStorage keys first
-              const keys = await AsyncStorage.getAllKeys();
-              console.log("All keys:", keys);
+              // Get all AsyncStorage keys first for debugging
+              const allKeys = await AsyncStorage.getAllKeys();
+              console.log("🔑 All AsyncStorage keys:", allKeys);
 
-              // Filter for GamePad Notes keys
-              const gamepadKeys = keys.filter(
+              // Filter for GamePad Notes keys with multiple patterns
+              const gamepadKeys = allKeys.filter(
+                (key) =>
+                  key.includes("gamepad") ||
+                  key.includes("@gamepad_notes") ||
+                  key.startsWith("@gamepad_notes")
+              );
+
+              console.log("🎮 GamePad keys found:", gamepadKeys);
+
+              // Define specific keys to remove as fallback
+              const specificKeys = [
+                "@gamepad_notes_games",
+                "@gamepad_notes_settings",
+              ];
+              console.log("📋 Specific keys to remove:", specificKeys);
+
+              // Use found GamePad keys if any, otherwise use specific keys
+              const keysToRemove =
+                gamepadKeys.length > 0 ? gamepadKeys : specificKeys;
+              console.log("🗑️ Final keys to remove:", keysToRemove);
+
+              if (keysToRemove.length > 0) {
+                await AsyncStorage.multiRemove(keysToRemove);
+                console.log("✅ Keys removed successfully");
+              } else {
+                console.log("⚠️ No keys found to remove");
+              }
+
+              // Verify deletion
+              const remainingKeys = await AsyncStorage.getAllKeys();
+              const remainingGamepadKeys = remainingKeys.filter(
                 (key) =>
                   key.includes("gamepad") || key.includes("@gamepad_notes")
               );
+              console.log(
+                "🔍 Remaining GamePad keys after deletion:",
+                remainingGamepadKeys
+              );
 
-              console.log("GamePad keys to remove:", gamepadKeys);
+              // Double-check by trying to get the main data
+              const checkGames = await AsyncStorage.getItem(
+                "@gamepad_notes_games"
+              );
+              const checkSettings = await AsyncStorage.getItem(
+                "@gamepad_notes_settings"
+              );
+              console.log(
+                "🔍 Final verification - Games:",
+                checkGames,
+                "Settings:",
+                checkSettings
+              );
 
-              if (gamepadKeys.length > 0) {
-                await AsyncStorage.multiRemove(gamepadKeys);
-              } else {
-                // Fallback - remove specific keys
-                await AsyncStorage.multiRemove([
-                  "@gamepad_notes_games",
-                  "@gamepad_notes_settings",
-                ]);
-              }
-
-              console.log("Data cleared successfully");
+              setIsClearing(false);
+              console.log("🎉 Data clear completed successfully");
 
               Alert.alert("SUCCESS", "ALL DATA HAS BEEN CLEARED.", [
                 {
                   text: "OK",
                   onPress: () => {
+                    console.log("🔄 Refreshing app after clear...");
                     // Force app refresh
                     navigation.reset({
                       index: 0,
@@ -349,7 +526,8 @@ const SettingsScreen = ({ navigation }) => {
                 },
               ]);
             } catch (error) {
-              console.error("Clear data error:", error);
+              console.error("❌ Clear data error:", error);
+              setIsClearing(false);
               Alert.alert("ERROR", `FAILED TO CLEAR DATA: ${error.message}`);
             }
           },
@@ -469,7 +647,7 @@ const SettingsScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Data Management Section - Enhanced */}
+        {/* Data Management Section - Enhanced with Loading States */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>💾 DATA BACKUP & RESTORE</Text>
 
@@ -481,12 +659,16 @@ const SettingsScreen = ({ navigation }) => {
             </Text>
 
             <Pressable
-              style={[styles.actionButton, styles.primaryButton]}
+              style={[
+                styles.actionButton,
+                styles.primaryButton,
+                isExporting && styles.actionButtonDisabled,
+              ]}
               onPress={handleExportToEmail}
-              disabled={isExporting}
+              disabled={isExporting || isImporting || isClearing}
             >
               <Text style={styles.actionButtonText}>
-                {isExporting ? "📤 CREATING..." : "📤 CREATE BACKUP"}
+                {isExporting ? "📤 CREATING BACKUP..." : "📤 CREATE BACKUP"}
               </Text>
               <Text style={styles.actionButtonSubtext}>
                 {Platform.OS === "web"
@@ -496,12 +678,18 @@ const SettingsScreen = ({ navigation }) => {
             </Pressable>
 
             <Pressable
-              style={[styles.actionButton, styles.successButton]}
+              style={[
+                styles.actionButton,
+                styles.successButton,
+                isImporting && styles.actionButtonDisabled,
+              ]}
               onPress={handleImportBackup}
-              disabled={isImporting}
+              disabled={isImporting || isExporting || isClearing}
             >
               <Text style={styles.actionButtonText}>
-                {isImporting ? "📥 IMPORTING..." : "📥 RESTORE FROM BACKUP"}
+                {isImporting
+                  ? "📥 IMPORTING BACKUP..."
+                  : "📥 RESTORE FROM BACKUP"}
               </Text>
               <Text style={styles.actionButtonSubtext}>
                 SELECT BACKUP FILE TO RESTORE DATA
@@ -512,11 +700,16 @@ const SettingsScreen = ({ navigation }) => {
           <View style={styles.warningCard}>
             <Text style={styles.warningCardTitle}>⚠️ DANGER ZONE</Text>
             <Pressable
-              style={[styles.actionButton, styles.dangerButton]}
+              style={[
+                styles.actionButton,
+                styles.dangerButton,
+                isClearing && styles.actionButtonDisabled,
+              ]}
               onPress={handleClearAllData}
+              disabled={isClearing || isExporting || isImporting}
             >
               <Text style={[styles.actionButtonText, styles.dangerButtonText]}>
-                🗑️ CLEAR ALL DATA
+                {isClearing ? "🗑️ CLEARING DATA..." : "🗑️ CLEAR ALL DATA"}
               </Text>
               <Text
                 style={[styles.actionButtonSubtext, styles.dangerButtonText]}
@@ -594,7 +787,7 @@ const SettingsScreen = ({ navigation }) => {
   );
 };
 
-// Enhanced styles with new backup components
+// Enhanced styles with disabled states
 const getStyles = (theme, getTextSize) =>
   StyleSheet.create({
     container: {
@@ -742,6 +935,10 @@ const getStyles = (theme, getTextSize) =>
       marginBottom: 12,
       borderWidth: 2,
       borderColor: theme.borderColor,
+    },
+    actionButtonDisabled: {
+      opacity: 0.6,
+      borderColor: "#ccc",
     },
     primaryButton: {
       backgroundColor: theme.isDark ? "#1a3a35" : "#e8f5f3",
