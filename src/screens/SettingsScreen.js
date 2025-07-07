@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -16,31 +16,250 @@ import { useTheme } from "../../ThemeContext";
 const SettingsScreen = ({ navigation }) => {
   const { theme, settings, updateSettings, getTextSize } = useTheme();
   const [showAbout, setShowAbout] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Create hidden file input for web import
+  React.useEffect(() => {
+    if (Platform.OS === "web" && !fileInputRef.current) {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".json";
+      input.style.display = "none";
+      document.body.appendChild(input);
+      fileInputRef.current = input;
+
+      return () => {
+        if (document.body.contains(input)) {
+          document.body.removeChild(input);
+        }
+      };
+    }
+  }, []);
 
   // Function to handle setting changes
   const handleSettingChange = (key, value) => {
     updateSettings({ [key]: value });
   };
 
-  // Handle data export (future feature)
-  const handleExportData = () => {
-    Alert.alert(
-      "EXPORT DATA",
-      "DATA EXPORT FEATURE COMING SOON! THIS WILL ALLOW YOU TO BACKUP YOUR GAME NOTES.",
-      [{ text: "OK" }]
-    );
+  // Export data to email
+  const handleExportToEmail = async () => {
+    try {
+      setIsExporting(true);
+
+      // Get all game data and settings
+      const gamesData = await AsyncStorage.getItem("@gamepad_notes_games");
+      const settingsData = await AsyncStorage.getItem(
+        "@gamepad_notes_settings"
+      );
+
+      // Create backup object
+      const backup = {
+        version: "1.0.0",
+        exportDate: new Date().toISOString(),
+        appName: "GamePad Notes",
+        platform: Platform.OS,
+        games: JSON.parse(gamesData || "[]"),
+        settings: JSON.parse(settingsData || "{}"),
+        totalGames: JSON.parse(gamesData || "[]").length,
+        totalEntries: JSON.parse(gamesData || "[]").reduce(
+          (total, game) => total + game.entries.length,
+          0
+        ),
+      };
+
+      if (Platform.OS === "web") {
+        // Web: Download backup file
+        const dataStr = JSON.stringify(backup, null, 2);
+        const dataBlob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(dataBlob);
+
+        // Create download link
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `gamepad-notes-backup-${
+          new Date().toISOString().split("T")[0]
+        }.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Clean up
+        URL.revokeObjectURL(url);
+
+        Alert.alert(
+          "BACKUP DOWNLOADED",
+          "YOUR BACKUP FILE HAS BEEN DOWNLOADED! EMAIL IT TO YOURSELF FOR SAFEKEEPING.",
+          [{ text: "OK" }]
+        );
+      } else {
+        // Mobile: Use native sharing if available
+        try {
+          const Sharing = await import("expo-sharing");
+          const FileSystem = await import("expo-file-system");
+
+          // Create filename with date
+          const date = new Date().toISOString().split("T")[0];
+          const filename = `gamepad-notes-backup-${date}.json`;
+          const fileUri = `${FileSystem.documentDirectory}${filename}`;
+
+          // Save backup file
+          await FileSystem.writeAsStringAsync(
+            fileUri,
+            JSON.stringify(backup, null, 2)
+          );
+
+          // Check if sharing is available
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(fileUri, {
+              dialogTitle: "Email Your GamePad Notes Backup",
+              mimeType: "application/json",
+            });
+          } else {
+            // Fallback to email
+            const subject = encodeURIComponent("GamePad Notes Backup");
+            const body = encodeURIComponent(
+              `Your GamePad Notes backup is ready.\n\n` +
+                `Backup Date: ${new Date().toLocaleDateString()}\n` +
+                `Games: ${backup.totalGames}\n` +
+                `Total Entries: ${backup.totalEntries}\n\n` +
+                `To restore: Download this file and use "Import Backup" in GamePad Notes settings.`
+            );
+
+            const mailtoUrl = `mailto:?subject=${subject}&body=${body}`;
+            await Linking.openURL(mailtoUrl);
+          }
+        } catch (error) {
+          console.error("Mobile sharing error:", error);
+          Alert.alert(
+            "EXPORT ERROR",
+            "FAILED TO SHARE BACKUP FILE. PLEASE TRY AGAIN."
+          );
+        }
+      }
+
+      setIsExporting(false);
+    } catch (error) {
+      console.error("Export error:", error);
+      Alert.alert("EXPORT ERROR", "FAILED TO CREATE BACKUP. PLEASE TRY AGAIN.");
+      setIsExporting(false);
+    }
   };
 
-  // Handle data import (future feature)
-  const handleImportData = () => {
-    Alert.alert(
-      "IMPORT DATA",
-      "DATA IMPORT FEATURE COMING SOON! THIS WILL ALLOW YOU TO RESTORE YOUR GAME NOTES FROM A BACKUP.",
-      [{ text: "OK" }]
-    );
+  // Import data from file
+  const handleImportBackup = async () => {
+    if (Platform.OS === "web") {
+      // Web import
+      if (!fileInputRef.current) return;
+
+      fileInputRef.current.onchange = async (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          setIsImporting(true);
+
+          try {
+            const fileContent = await file.text();
+            await processBackupData(fileContent);
+          } catch (error) {
+            console.error("Import error:", error);
+            Alert.alert("IMPORT ERROR", "INVALID BACKUP FILE OR READ ERROR.");
+          }
+
+          setIsImporting(false);
+        }
+      };
+
+      fileInputRef.current.click();
+    } else {
+      // Mobile import
+      try {
+        setIsImporting(true);
+        const DocumentPicker = await import("expo-document-picker");
+
+        const result = await DocumentPicker.getDocumentAsync({
+          type: "application/json",
+          copyToCacheDirectory: true,
+        });
+
+        if (!result.canceled && result.assets && result.assets[0]) {
+          const FileSystem = await import("expo-file-system");
+          const fileContent = await FileSystem.readAsStringAsync(
+            result.assets[0].uri
+          );
+          await processBackupData(fileContent);
+        }
+
+        setIsImporting(false);
+      } catch (error) {
+        console.error("Mobile import error:", error);
+        Alert.alert("IMPORT ERROR", "FAILED TO IMPORT BACKUP FILE.");
+        setIsImporting(false);
+      }
+    }
   };
 
-  // Clear all data
+  // Process backup data
+  const processBackupData = async (fileContent) => {
+    try {
+      const backup = JSON.parse(fileContent);
+
+      // Validate backup structure
+      if (!backup.games || !Array.isArray(backup.games)) {
+        throw new Error("Invalid backup file format");
+      }
+
+      // Show confirmation with backup details
+      Alert.alert(
+        "IMPORT BACKUP",
+        `RESTORE BACKUP FROM ${new Date(
+          backup.exportDate
+        ).toLocaleDateString()}?\n\n` +
+          `🎮 GAMES: ${backup.totalGames || backup.games.length}\n` +
+          `📝 ENTRIES: ${
+            backup.totalEntries ||
+            backup.games.reduce((total, game) => total + game.entries.length, 0)
+          }\n\n` +
+          `⚠️ THIS WILL REPLACE ALL CURRENT DATA!`,
+        [
+          { text: "CANCEL", style: "cancel" },
+          {
+            text: "RESTORE",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                // Save imported data
+                await AsyncStorage.setItem(
+                  "@gamepad_notes_games",
+                  JSON.stringify(backup.games)
+                );
+
+                // Import settings if available
+                if (backup.settings) {
+                  await AsyncStorage.setItem(
+                    "@gamepad_notes_settings",
+                    JSON.stringify(backup.settings)
+                  );
+                }
+
+                Alert.alert(
+                  "IMPORT SUCCESS",
+                  "YOUR DATA HAS BEEN RESTORED! RESTART THE APP TO SEE YOUR IMPORTED GAMES.",
+                  [{ text: "OK", onPress: () => navigation.navigate("Home") }]
+                );
+              } catch (error) {
+                Alert.alert("IMPORT ERROR", "FAILED TO RESTORE DATA.");
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      throw new Error("Failed to parse backup file");
+    }
+  };
+
+  // Clear all data - Fixed version
   const handleClearAllData = () => {
     Alert.alert(
       "CLEAR ALL DATA",
@@ -52,11 +271,15 @@ const SettingsScreen = ({ navigation }) => {
           style: "destructive",
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem("@gamepad_notes_games");
+              await AsyncStorage.multiRemove([
+                "@gamepad_notes_games",
+                "@gamepad_notes_settings",
+              ]);
               Alert.alert("SUCCESS", "ALL DATA HAS BEEN CLEARED.", [
-                { text: "OK", onPress: () => navigation.goBack() },
+                { text: "OK", onPress: () => navigation.navigate("Home") },
               ]);
             } catch (error) {
+              console.error("Clear data error:", error);
               Alert.alert("ERROR", "FAILED TO CLEAR DATA.");
             }
           },
@@ -176,31 +399,62 @@ const SettingsScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Data Management Section */}
+        {/* Data Management Section - Enhanced */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>💾 DATA MANAGEMENT</Text>
+          <Text style={styles.sectionTitle}>💾 DATA BACKUP & RESTORE</Text>
 
-          <Pressable style={styles.actionButton} onPress={handleExportData}>
-            <Text style={styles.actionButtonText}>📤 EXPORT DATA</Text>
-            <Text style={styles.actionButtonSubtext}>BACKUP YOUR NOTES</Text>
-          </Pressable>
-
-          <Pressable style={styles.actionButton} onPress={handleImportData}>
-            <Text style={styles.actionButtonText}>📥 IMPORT DATA</Text>
-            <Text style={styles.actionButtonSubtext}>RESTORE FROM BACKUP</Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.actionButton, styles.dangerButton]}
-            onPress={handleClearAllData}
-          >
-            <Text style={[styles.actionButtonText, styles.dangerButtonText]}>
-              🗑️ CLEAR ALL DATA
+          <View style={styles.backupCard}>
+            <Text style={styles.backupCardTitle}>📧 EMAIL BACKUP SYSTEM</Text>
+            <Text style={styles.backupCardDescription}>
+              SECURE YOUR GAMING NOTES BY CREATING A BACKUP FILE YOU CAN EMAIL
+              TO YOURSELF FOR SAFEKEEPING
             </Text>
-            <Text style={[styles.actionButtonSubtext, styles.dangerButtonText]}>
-              DELETE ALL GAMES AND NOTES
-            </Text>
-          </Pressable>
+
+            <Pressable
+              style={[styles.actionButton, styles.primaryButton]}
+              onPress={handleExportToEmail}
+              disabled={isExporting}
+            >
+              <Text style={styles.actionButtonText}>
+                {isExporting ? "📤 CREATING..." : "📤 CREATE BACKUP"}
+              </Text>
+              <Text style={styles.actionButtonSubtext}>
+                {Platform.OS === "web"
+                  ? "DOWNLOAD BACKUP FILE TO EMAIL"
+                  : "SHARE BACKUP VIA EMAIL OR MESSAGES"}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.actionButton, styles.successButton]}
+              onPress={handleImportBackup}
+              disabled={isImporting}
+            >
+              <Text style={styles.actionButtonText}>
+                {isImporting ? "📥 IMPORTING..." : "📥 RESTORE FROM BACKUP"}
+              </Text>
+              <Text style={styles.actionButtonSubtext}>
+                SELECT BACKUP FILE TO RESTORE DATA
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.warningCard}>
+            <Text style={styles.warningCardTitle}>⚠️ DANGER ZONE</Text>
+            <Pressable
+              style={[styles.actionButton, styles.dangerButton]}
+              onPress={handleClearAllData}
+            >
+              <Text style={[styles.actionButtonText, styles.dangerButtonText]}>
+                🗑️ CLEAR ALL DATA
+              </Text>
+              <Text
+                style={[styles.actionButtonSubtext, styles.dangerButtonText]}
+              >
+                DELETE ALL GAMES AND NOTES
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* About Section */}
@@ -232,12 +486,11 @@ const SettingsScreen = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.aboutModal}>
             <Text style={styles.aboutTitle}>🎮 GAMEPAD NOTES</Text>
-            <Text style={styles.aboutVersion}>VERSION 1.0.0</Text>
+            <Text style={styles.aboutVersion}>VERSION 1.0.0 PWA</Text>
 
             <Text style={styles.aboutDescription}>
-              A MOBILE NOTEPAD APP DESIGNED SPECIFICALLY FOR VIDEO GAME NOTES.
-              KEEP TRACK OF YOUR GAMING PROGRESS, STRATEGIES, AND MEMORABLE
-              MOMENTS.
+              A PROGRESSIVE WEB APP FOR VIDEO GAME NOTES. INSTALL TO YOUR HOME
+              SCREEN FOR THE BEST EXPERIENCE!
             </Text>
 
             <View style={styles.aboutFeatures}>
@@ -246,12 +499,12 @@ const SettingsScreen = ({ navigation }) => {
                 🎯 GAME LIBRARY MANAGEMENT
               </Text>
               <Text style={styles.aboutFeature}>📝 DAILY GAMING ENTRIES</Text>
-              <Text style={styles.aboutFeature}>🎨 CUSTOM GAME ICONS</Text>
-              <Text style={styles.aboutFeature}>💾 DATA PERSISTENCE</Text>
-              <Text style={styles.aboutFeature}>
-                📱 TOUCH-OPTIMIZED INTERFACE
-              </Text>
+              <Text style={styles.aboutFeature}>📷 PHOTO ATTACHMENTS</Text>
+              <Text style={styles.aboutFeature}>🎨 CUSTOM GAME COVERS</Text>
+              <Text style={styles.aboutFeature}>📧 EMAIL BACKUP SYSTEM</Text>
+              <Text style={styles.aboutFeature}>💾 OFFLINE FUNCTIONALITY</Text>
               <Text style={styles.aboutFeature}>🌙 DARK MODE SUPPORT</Text>
+              <Text style={styles.aboutFeature}>📱 INSTALL TO HOME SCREEN</Text>
             </View>
 
             <Text style={styles.aboutCredit}>
@@ -271,7 +524,7 @@ const SettingsScreen = ({ navigation }) => {
   );
 };
 
-// Dynamic styles based on theme and text size
+// Enhanced styles with new backup components
 const getStyles = (theme, getTextSize) =>
   StyleSheet.create({
     container: {
@@ -313,7 +566,7 @@ const getStyles = (theme, getTextSize) =>
     },
     scrollContent: {
       padding: 20,
-      paddingBottom: 40, // Bottom spacing
+      paddingBottom: 40,
     },
     section: {
       marginBottom: 30,
@@ -377,6 +630,41 @@ const getStyles = (theme, getTextSize) =>
     textSizeButtonTextSelected: {
       color: theme.text,
     },
+    // Enhanced backup section styles
+    backupCard: {
+      backgroundColor: theme.cardBackground,
+      borderWidth: 2,
+      borderColor: theme.buttonPrimary,
+      borderRadius: 12,
+      padding: 20,
+      marginBottom: 15,
+    },
+    backupCardTitle: {
+      fontSize: getTextSize(14),
+      color: theme.text,
+      fontFamily: "monospace",
+      marginBottom: 8,
+    },
+    backupCardDescription: {
+      fontSize: getTextSize(10),
+      color: theme.secondaryText,
+      fontFamily: "monospace",
+      lineHeight: 14,
+      marginBottom: 20,
+    },
+    warningCard: {
+      backgroundColor: theme.isDark ? "#2d1a1a" : "#fff5f5",
+      borderWidth: 2,
+      borderColor: theme.buttonDanger,
+      borderRadius: 12,
+      padding: 20,
+    },
+    warningCardTitle: {
+      fontSize: getTextSize(12),
+      color: theme.buttonDanger,
+      fontFamily: "monospace",
+      marginBottom: 15,
+    },
     actionButton: {
       backgroundColor: theme.cardBackground,
       padding: 18,
@@ -384,6 +672,18 @@ const getStyles = (theme, getTextSize) =>
       marginBottom: 12,
       borderWidth: 2,
       borderColor: theme.borderColor,
+    },
+    primaryButton: {
+      backgroundColor: theme.isDark ? "#1a3a35" : "#e8f5f3",
+      borderColor: theme.buttonPrimary,
+    },
+    successButton: {
+      backgroundColor: theme.isDark ? "#1a3a2a" : "#e8f5e8",
+      borderColor: theme.buttonSuccess,
+    },
+    dangerButton: {
+      borderColor: theme.buttonDanger,
+      backgroundColor: "transparent",
     },
     actionButtonText: {
       fontSize: getTextSize(12),
@@ -395,10 +695,6 @@ const getStyles = (theme, getTextSize) =>
       fontSize: getTextSize(10),
       color: theme.secondaryText,
       fontFamily: "monospace",
-    },
-    dangerButton: {
-      borderColor: theme.buttonDanger,
-      backgroundColor: theme.isDark ? "#2d1a1a" : "#fff5f5",
     },
     dangerButtonText: {
       color: theme.buttonDanger,
