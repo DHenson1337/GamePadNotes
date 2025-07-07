@@ -65,7 +65,7 @@ const AddGameScreen = ({ navigation, addGame }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Header with Submit Button */}
       <View style={styles.header}>
         <Pressable
           style={styles.backButton}
@@ -74,10 +74,19 @@ const AddGameScreen = ({ navigation, addGame }) => {
           <Text style={styles.backButtonText}>← CANCEL</Text>
         </Pressable>
         <Text style={styles.headerTitle}>ADD NEW GAME</Text>
-        <View style={styles.placeholder} />
+        <Pressable
+          style={[
+            styles.submitButton,
+            !gameTitle.trim() && styles.submitButtonDisabled,
+          ]}
+          onPress={handleAddGame}
+          disabled={!gameTitle.trim()}
+        >
+          <Text style={styles.submitButtonText}>ADD</Text>
+        </Pressable>
       </View>
 
-      {/* Scrollable Content */}
+      {/* Scrollable Content - Full Height */}
       <ScrollView
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
@@ -150,23 +159,9 @@ const AddGameScreen = ({ navigation, addGame }) => {
           </Pressable>
         </View>
 
-        {/* Bottom padding to ensure button visibility */}
-        <View style={styles.bottomPadding} />
+        {/* Bottom spacing */}
+        <View style={styles.bottomSpacing} />
       </ScrollView>
-
-      {/* Fixed Add Game Button at bottom */}
-      <View style={styles.bottomSection}>
-        <Pressable
-          style={[
-            styles.addButton,
-            !gameTitle.trim() && styles.addButtonDisabled,
-          ]}
-          onPress={handleAddGame}
-          disabled={!gameTitle.trim()}
-        >
-          <Text style={styles.addButtonText}>🚀 ADD GAME</Text>
-        </Pressable>
-      </View>
 
       {/* Custom Game Image Picker */}
       <GameImagePicker
@@ -224,26 +219,43 @@ const getStyles = (theme, getTextSize) =>
       paddingHorizontal: 15,
       paddingVertical: 8,
       borderRadius: 4,
+      minWidth: 80,
     },
     backButtonText: {
       color: "white",
       fontSize: getTextSize(12),
       fontFamily: "monospace",
+      textAlign: "center",
     },
     headerTitle: {
       fontSize: getTextSize(14),
       color: theme.text,
       fontFamily: "monospace",
+      flex: 1,
+      textAlign: "center",
     },
-    placeholder: {
-      width: 80,
+    submitButton: {
+      backgroundColor: theme.buttonPrimary,
+      paddingHorizontal: 15,
+      paddingVertical: 8,
+      borderRadius: 4,
+      minWidth: 80,
+    },
+    submitButtonDisabled: {
+      backgroundColor: "#ccc",
+    },
+    submitButtonText: {
+      color: theme.isDark ? theme.background : "white",
+      fontSize: getTextSize(12),
+      fontFamily: "monospace",
+      textAlign: "center",
     },
     scrollContainer: {
       flex: 1,
     },
     scrollContent: {
       padding: 20,
-      paddingBottom: 100, // Extra padding for fixed button
+      paddingBottom: 40, // Bottom spacing
     },
     section: {
       marginBottom: 30,
@@ -334,34 +346,8 @@ const getStyles = (theme, getTextSize) =>
       borderWidth: 2,
       borderColor: theme.borderColor,
     },
-    bottomPadding: {
-      height: 20,
-    },
-    bottomSection: {
-      backgroundColor: theme.headerBackground,
-      padding: 20,
-      borderTopWidth: 2,
-      borderTopColor: theme.borderColor,
-      // Web-specific positioning
-      ...(Platform.OS === "web" && {
-        position: "sticky",
-        bottom: 0,
-        zIndex: 1000,
-      }),
-    },
-    addButton: {
-      backgroundColor: theme.buttonPrimary,
-      paddingVertical: 15,
-      borderRadius: 4,
-      alignItems: "center",
-    },
-    addButtonDisabled: {
-      backgroundColor: "#ccc",
-    },
-    addButtonText: {
-      color: theme.isDark ? theme.background : "white",
-      fontSize: getTextSize(14),
-      fontFamily: "monospace",
+    bottomSpacing: {
+      height: 40,
     },
     // Modal styles
     modalOverlay: {

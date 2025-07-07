@@ -8,9 +8,10 @@ import {
   Switch,
   Modal,
   Alert,
+  Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useTheme } from "../../ThemeContext"; // ONLY ONE IMPORT!
+import { useTheme } from "../../ThemeContext";
 
 const SettingsScreen = ({ navigation }) => {
   const { theme, settings, updateSettings, getTextSize } = useTheme();
@@ -80,7 +81,12 @@ const SettingsScreen = ({ navigation }) => {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      {/* Scrollable Content */}
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Appearance Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🎨 APPEARANCE</Text>
@@ -211,6 +217,9 @@ const SettingsScreen = ({ navigation }) => {
             </Text>
           </Pressable>
         </View>
+
+        {/* Bottom spacing */}
+        <View style={styles.bottomSpacing} />
       </ScrollView>
 
       {/* About Modal */}
@@ -299,9 +308,12 @@ const getStyles = (theme, getTextSize) =>
     placeholder: {
       width: 80,
     },
-    content: {
+    scrollContainer: {
       flex: 1,
+    },
+    scrollContent: {
       padding: 20,
+      paddingBottom: 40, // Bottom spacing
     },
     section: {
       marginBottom: 30,
@@ -390,6 +402,9 @@ const getStyles = (theme, getTextSize) =>
     },
     dangerButtonText: {
       color: theme.buttonDanger,
+    },
+    bottomSpacing: {
+      height: 40,
     },
     // Modal styles
     modalOverlay: {
