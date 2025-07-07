@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
+import { Platform, BackHandler } from "react-native";
 import { ThemeProvider } from "./ThemeContext";
 
 // Import screens
@@ -296,7 +296,13 @@ const App = () => {
             headerShown: false, // We'll use custom headers
           }}
         >
-          <Stack.Screen name="Home">
+          <Stack.Screen
+            name="Home"
+            options={{
+              // Prevent back button from closing app on home screen
+              gestureEnabled: false,
+            }}
+          >
             {(props) => (
               <HomeScreen
                 {...props}
@@ -307,7 +313,13 @@ const App = () => {
             )}
           </Stack.Screen>
 
-          <Stack.Screen name="GameDetail">
+          <Stack.Screen
+            name="GameDetail"
+            options={{
+              // Allow back gesture but handle it properly
+              gestureEnabled: true,
+            }}
+          >
             {(props) => (
               <GameDetailScreen
                 {...props}
@@ -321,11 +333,23 @@ const App = () => {
             )}
           </Stack.Screen>
 
-          <Stack.Screen name="AddGame">
+          <Stack.Screen
+            name="AddGame"
+            options={{
+              // Prevent back button from closing app, navigate to Home instead
+              gestureEnabled: true,
+            }}
+          >
             {(props) => <AddGameScreen {...props} addGame={addGame} />}
           </Stack.Screen>
 
-          <Stack.Screen name="Settings">
+          <Stack.Screen
+            name="Settings"
+            options={{
+              // Allow back to home
+              gestureEnabled: true,
+            }}
+          >
             {(props) => <SettingsScreen {...props} />}
           </Stack.Screen>
         </Stack.Navigator>

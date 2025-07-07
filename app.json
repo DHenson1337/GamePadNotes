@@ -47,12 +47,13 @@
       "display": "standalone",
       "orientation": "portrait",
       "scope": "/",
-      "shortName": "GamePad",
+      "shortName": "GamePad Notes",
       "description": "Your personal gaming notes companion",
       "categories": ["games", "productivity", "lifestyle"],
       "lang": "en",
       "dir": "ltr",
-      "preferRelatedApplications": false
+      "preferRelatedApplications": false,
+      "name": "GamePad Notes"
     },
     "plugins": [
       "expo-font",
