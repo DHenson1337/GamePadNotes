@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 import { ThemeProvider } from "./ThemeContext";
 
 // Import screens
@@ -9,6 +10,56 @@ import HomeScreen from "./src/screens/HomeScreen";
 import GameDetailScreen from "./src/screens/GameDetailScreen";
 import AddGameScreen from "./src/screens/AddGameScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
+
+// Add CSS injection for web touch scrolling
+if (Platform.OS === "web") {
+  const style = document.createElement("style");
+  style.textContent = `
+    /* Fix mobile web scrolling for all screens */
+    body, html, #root {
+      height: 100vh !important;
+      -webkit-overflow-scrolling: touch !important;
+      touch-action: pan-y !important;
+      overflow: hidden !important;
+    }
+    
+    /* Make all ScrollView components work on web with touch */
+    .css-view-1dbjc4n {
+      -webkit-overflow-scrolling: touch !important;
+      touch-action: pan-y !important;
+    }
+    
+    /* Specific fix for scrollable content */
+    [data-class="RCTScrollView"] {
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      touch-action: pan-y !important;
+    }
+    
+    /* Ensure mobile viewport works correctly */
+    @media (max-width: 768px) {
+      body {
+        position: fixed !important;
+        width: 100% !important;
+        height: 100% !important;
+        overflow: hidden !important;
+      }
+      
+      /* Enable scrolling on content areas */
+      .css-view-1dbjc4n[style*="flex: 1"] {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+    }
+    
+    /* Fix for React Native web ScrollView */
+    div[style*="overflow-x: hidden"][style*="overflow-y: auto"] {
+      -webkit-overflow-scrolling: touch !important;
+      touch-action: pan-y !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 const Stack = createStackNavigator();
 
