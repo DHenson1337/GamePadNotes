@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "GamePadNotes",
-    "slug": "GamePadNotes",
+    "name": "GamePad Notes",
+    "slug": "gamepad-notes",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -14,9 +14,13 @@
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.davonhenson.gamepadnotes",
+      "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "GamePad Notes needs camera access to take photos of your gaming moments and achievements.",
-        "NSPhotoLibraryUsageDescription": "GamePad Notes needs photo library access to attach gaming screenshots to your notes."
+        "NSPhotoLibraryUsageDescription": "GamePad Notes needs photo library access to attach gaming screenshots to your notes.",
+        "NSPhotoLibraryAddUsageDescription": "GamePad Notes needs permission to save photos to your photo library.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -25,14 +29,23 @@
         "backgroundColor": "#f8faf9"
       },
       "edgeToEdgeEnabled": true,
+      "package": "com.davonhenson.gamepadnotes",
+      "versionCode": 1,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_MEDIA_LOCATION"
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "themeColor": "#4a9b96",
+      "backgroundColor": "#f8faf9",
+      "startUrl": "/",
+      "display": "standalone",
+      "orientation": "portrait"
     },
     "plugins": [
       "expo-font",
@@ -56,6 +69,11 @@
           "photosPermission": "GamePad Notes needs photo library access to select images for your gaming notes."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d7f9aa0f-97d2-4c2a-a3bf-811c9b1a652d"
+      }
+    }
   }
 }

@@ -116,7 +116,7 @@ const GameImagePicker = ({ visible, onClose, onImageSelected }) => {
 
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions?.Images || "Images",
+        mediaTypes: "Images",
         allowsEditing: true,
         aspect: [1, 1], // Square aspect for game covers
         quality: 0.9,
@@ -138,7 +138,7 @@ const GameImagePicker = ({ visible, onClose, onImageSelected }) => {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions?.Images || "Images",
+        mediaTypes: "Images",
         allowsEditing: true,
         aspect: [1, 1], // Square aspect for game covers
         quality: 0.9,
